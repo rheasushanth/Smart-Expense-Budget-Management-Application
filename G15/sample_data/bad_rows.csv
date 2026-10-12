@@ -1,0 +1,6 @@
+
+date,amount,type,category,note
+2026-10-12,250,Expense,Food,Lunch
+not-a-date,150,Expense,Food,Invalid date
+2026-10-12,-50,Expense,Food,Negative amount
+2026-10-12,abc,Expense,Food,Non-numeric amount
