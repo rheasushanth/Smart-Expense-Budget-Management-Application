@@ -37,6 +37,12 @@ class Transaction(models.Model):
         choices=Source.choices,
         default=Source.MANUAL,
     )
-
+    rule = models.ForeignKey(
+        "recurring.RecurringRule",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="transactions",
+    )
     def __str__(self):
         return f"{self.type}: {self.amount} on {self.date}"

@@ -6,7 +6,7 @@ class RecurringRule(models.Model):
     class Frequency(models.TextChoices):
         WEEKLY = "Weekly", "Weekly"
         MONTHLY = "Monthly", "Monthly"
-
+    is_active = models.BooleanField(default=True)
     rule_id = models.BigAutoField(primary_key=True)
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
