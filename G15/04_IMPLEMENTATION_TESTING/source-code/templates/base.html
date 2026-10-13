@@ -1,0 +1,40 @@
+
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Smart Expense & Budget Manager{% endblock %}</title>
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+</head>
+<body>
+    <header class="navbar">
+        <a class="brand" href="{% url 'home' %}">
+            <span class="brand-icon">₹</span>
+            Smart Expense
+        </a>
+
+        <nav aria-label="Main navigation">
+            <a href="{% url 'home' %}">Home</a>
+            <a href="/admin/">Administration</a>
+        </nav>
+    </header>
+
+    <main class="container">
+        {% block content %}
+        <section class="welcome-card">
+            <p class="eyebrow">PERSONAL FINANCE</p>
+            <h1>Take control of your money.</h1>
+            <p class="subtitle">
+                Track expenses, manage budgets, and build better financial habits.
+            </p>
+        </section>
+        {% endblock %}
+    </main>
+
+    <footer class="footer">
+        Smart Expense & Budget Management Application
+    </footer>
+</body>
+</html>
