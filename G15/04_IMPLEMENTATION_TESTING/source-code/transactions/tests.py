@@ -145,3 +145,73 @@ class RecordExpenseTests(TestCase):
             category=income_category,
             type=Transaction.TransactionType.EXPENSE,
         ).exists())
+
+class CategoryValidationTests(TestCase):
+    def setUp(self):
+        User = get_user_model()
+        self.user = User.objects.create_user(
+            email="categorytest@example.com",
+            password="TestPassword123!",
+            name="Category Test User",
+        )
+        self.income_category = Category.objects.create(
+            name="Test Salary",
+            type=Category.CategoryType.INCOME,
+            is_active=True,
+            created_by=self.user,
+        )
+        self.expense_category = Category.objects.create(
+            name="Test Food",
+            type=Category.CategoryType.EXPENSE,
+            is_active=True,
+            created_by=self.user,
+        )
+        self.client.login(
+            email="categorytest@example.com",
+            password="TestPassword123!",
+        )
+
+    def test_income_requires_category(self):
+        response = self.client.post(reverse("record_income"), {
+            "amount": "1000.00",
+            "category": "",
+            "date": date.today().isoformat(),
+            "note": "",
+        })
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(Transaction.objects.filter(
+            user=self.user,
+            type=Transaction.TransactionType.INCOME,
+        ).exists())
+
+    def test_expense_requires_category(self):
+        response = self.client.post(reverse("record_expense"), {
+            "amount": "100.00",
+            "category": "",
+            "date": date.today().isoformat(),
+            "note": "",
+        })
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(Transaction.objects.filter(
+            user=self.user,
+            type=Transaction.TransactionType.EXPENSE,
+        ).exists())
+
+    def test_inactive_category_is_rejected(self):
+        inactive_category = Category.objects.create(
+            name="Inactive Food",
+            type=Category.CategoryType.EXPENSE,
+            is_active=False,
+            created_by=self.user,
+        )
+        response = self.client.post(reverse("record_expense"), {
+            "amount": "100.00",
+            "category": inactive_category.pk,
+            "date": date.today().isoformat(),
+            "note": "",
+        })
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(Transaction.objects.filter(
+            user=self.user,
+            category=inactive_category,
+        ).exists())
