@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+
+{% block title %}{% if is_edit %}Edit budget{% else %}New budget{% endif %}{% endblock %}
+
+{% block content %}
+<section class="page-head">
+    <h1>{% if is_edit %}Edit budget{% else %}New budget{% endif %}</h1>
+</section>
+
+<form method="post" class="form-card" novalidate>
+    {% csrf_token %}
+
+    {% if form.non_field_errors %}
+    <ul class="errors">
+        {% for error in form.non_field_errors %}<li>{{ error }}</li>{% endfor %}
+    </ul>
+    {% endif %}
+
+    {% for field in form %}
+    <div class="field">
+        <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+        {{ field }}
+        {% if field.help_text %}<p class="help">{{ field.help_text }}</p>{% endif %}
+        {% for error in field.errors %}<p class="error">{{ error }}</p>{% endfor %}
+    </div>
+    {% endfor %}
+
+    <div class="actions">
+        <button type="submit">{% if is_edit %}Save changes{% else %}Create budget{% endif %}</button>
+        <a href="{% url 'budget_list' %}">Cancel</a>
+    </div>
+</form>
+{% endblock %}
