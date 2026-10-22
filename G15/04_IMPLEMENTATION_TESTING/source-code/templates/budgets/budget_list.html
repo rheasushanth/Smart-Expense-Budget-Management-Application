@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+
+{% block title %}Budgets{% endblock %}
+
+{% block content %}
+<section class="page-head">
+    <h1>Budgets</h1>
+    <a class="button" href="{% url 'budget_create' %}">New budget</a>
+</section>
+
+{% if messages %}
+<ul class="messages">
+    {% for message in messages %}<li>{{ message }}</li>{% endfor %}
+</ul>
+{% endif %}
+
+{% if budgets %}
+<table class="data-table">
+    <thead>
+        <tr>
+            <th>Category</th>
+            <th>Period</th>
+            <th>Runs</th>
+            <th>Limit</th>
+            <th>Threshold</th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for budget in budgets %}
+        <tr>
+            <td>{{ budget.category.name }}</td>
+            <td>{{ budget.period }}</td>
+            <td>{{ budget.start_date }} to {{ budget.period_end }}</td>
+            <td>{{ budget.limit_amount }}</td>
+            <td>{{ budget.threshold_pct }}%</td>
+            <td>
+                <a href="{% url 'budget_edit' budget.pk %}">Edit</a>
+                <a href="{% url 'budget_delete' budget.pk %}">Delete</a>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<p class="empty">No budgets yet. Create one to start tracking a category.</p>
+{% endif %}
+{% endblock %}

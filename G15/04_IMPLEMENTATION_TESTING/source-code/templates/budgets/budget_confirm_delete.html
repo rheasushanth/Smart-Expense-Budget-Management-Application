@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+
+{% block title %}Delete budget{% endblock %}
+
+{% block content %}
+<section class="page-head">
+    <h1>Delete budget</h1>
+</section>
+
+<div class="form-card">
+    <p>
+        Delete the {{ budget.category.name }} budget running
+        {{ budget.start_date }} to {{ budget.period_end }}?
+        Its alerts will be removed too.
+    </p>
+
+    <form method="post">
+        {% csrf_token %}
+        <div class="actions">
+            <button type="submit">Delete</button>
+            <a href="{% url 'budget_list' %}">Cancel</a>
+        </div>
+    </form>
+</div>
+{% endblock %}
