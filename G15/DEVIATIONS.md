@@ -23,6 +23,5 @@ These were accepted deliberately during the dry run rather than treated as defec
 | Coverage threshold not enforced | The CI pipeline reports coverage but does not fail below a threshold. NFR-005 requires at least 70% line coverage on the budgets, recurring and transactions apps. | Sprint 2 (#31), once those apps carry real tests. |
 | Sample CSV fixtures incomplete | No row exercises the "up to 2 decimal places" rule, and no row pairs a category with a mismatched transaction type (the FR-007 case). | Sprint 2, when the CSV importer is built (FR-009 to FR-011). |
 | Admin path | `templates/base.html` links to `/admin/`, whereas Project Plan E.2 places Django's built-in admin at `/django-admin/`, restricted to superusers, with FR-020 to FR-022 delivered by team-built views in the categories app. | Sprint 2, with the admin and category management work. |
-### Temporary Login URL
 
 | Temporary login URL | `LOGIN_URL = "/admin/login/"` redirects unauthenticated users to Django's admin login, which is not suitable for regular Customer-role users. | Update `LOGIN_URL` to the customer login route when FR-002 authentication is implemented. |
