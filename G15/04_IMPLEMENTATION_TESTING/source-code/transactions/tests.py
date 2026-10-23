@@ -8,6 +8,7 @@ from django.urls import reverse
 
 from categories.models import Category
 from transactions.models import Transaction
+from transactions.forms import ExpenseForm, IncomeForm
 
 
 class RecordIncomeTests(TestCase):
@@ -215,3 +216,42 @@ class CategoryValidationTests(TestCase):
             user=self.user,
             category=inactive_category,
         ).exists())
+    def test_income_rejects_zero_amount(self):
+        form = IncomeForm(data={
+            "amount": "0",
+            "category": self.income_category.pk,
+            "date": date.today().isoformat(),
+            "note": "",
+        })
+        self.assertFalse(form.is_valid())
+        self.assertIn("amount", form.errors)
+
+    def test_income_rejects_negative_five_amount(self):
+        form = IncomeForm(data={
+            "amount": "-5",
+            "category": self.income_category.pk,
+            "date": date.today().isoformat(),
+            "note": "",
+        })
+        self.assertFalse(form.is_valid())
+        self.assertIn("amount", form.errors)
+
+    def test_expense_rejects_zero_amount(self):
+        form = ExpenseForm(data={
+            "amount": "0",
+            "category": self.expense_category.pk,
+            "date": date.today().isoformat(),
+            "note": "",
+        })
+        self.assertFalse(form.is_valid())
+        self.assertIn("amount", form.errors)
+
+    def test_expense_rejects_negative_five_amount(self):
+        form = ExpenseForm(data={
+            "amount": "-5",
+            "category": self.expense_category.pk,
+            "date": date.today().isoformat(),
+            "note": "",
+        })
+        self.assertFalse(form.is_valid())
+        self.assertIn("amount", form.errors)
