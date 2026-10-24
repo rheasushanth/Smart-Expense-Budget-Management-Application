@@ -7,8 +7,10 @@ from django.urls import reverse
 
 from accounts.models import User
 from categories.models import Category
+from transactions.models import Transaction
 
 from .models import Budget
+from .services import percentage_used, remaining_for, spend_for
 
 
 class BudgetTestData(TestCase):
@@ -248,3 +250,104 @@ class BudgetPeriodEnd(BudgetTestData):
     def test_monthly_period_rolls_over_the_year_end(self):
         budget = self.make_budget(start_date=date(2026, 12, 10))
         self.assertEqual(budget.period_end, date(2027, 1, 9))
+
+
+class TCBUD02SpendTracking(BudgetTestData):
+    """TC-BUD-02 (FR-013): cumulative Expense spend against a budget.
+
+    With a Food budget of 5000, adding expenses of 1000 and 1500 and then
+    deleting the 1000 one shows 1000, then 2500, then 1500. Income is never
+    counted.
+    """
+
+    def setUp(self):
+        self.budget = self.make_budget(start_date=date(2026, 10, 1))
+        self.budget.full_clean()
+        self.budget.save()
+
+    def add_expense(self, amount, category=None, when=date(2026, 10, 5)):
+        return Transaction.objects.create(
+            user=self.user,
+            category=category or self.food,
+            amount=Decimal(amount),
+            type=Transaction.TransactionType.EXPENSE,
+            date=when,
+            note="",
+        )
+
+    def test_spend_is_zero_before_any_transaction(self):
+        self.assertEqual(spend_for(self.budget), Decimal("0.00"))
+
+    def test_spend_accumulates_then_drops_when_a_transaction_is_deleted(self):
+        first = self.add_expense("1000.00")
+        self.assertEqual(spend_for(self.budget), Decimal("1000.00"))
+
+        self.add_expense("1500.00")
+        self.assertEqual(spend_for(self.budget), Decimal("2500.00"))
+
+        first.delete()
+        self.assertEqual(spend_for(self.budget), Decimal("1500.00"))
+
+    def test_income_is_not_counted(self):
+        self.add_expense("1000.00")
+        Transaction.objects.create(
+            user=self.user,
+            category=self.salary,
+            amount=Decimal("20000.00"),
+            type=Transaction.TransactionType.INCOME,
+            date=date(2026, 10, 5),
+            note="",
+        )
+        self.assertEqual(spend_for(self.budget), Decimal("1000.00"))
+
+    def test_another_category_is_not_counted(self):
+        self.add_expense("1000.00")
+        self.add_expense("800.00", category=self.travel)
+        self.assertEqual(spend_for(self.budget), Decimal("1000.00"))
+
+    def test_another_users_spend_is_not_counted(self):
+        self.add_expense("1000.00")
+        other = User.objects.create_user(
+            email="bob@test.com", password="Str0ng#Pass1", name="Bob"
+        )
+        Transaction.objects.create(
+            user=other,
+            category=self.food,
+            amount=Decimal("9999.00"),
+            type=Transaction.TransactionType.EXPENSE,
+            date=date(2026, 10, 5),
+            note="",
+        )
+        self.assertEqual(spend_for(self.budget), Decimal("1000.00"))
+
+    def test_transactions_outside_the_budget_period_are_not_counted(self):
+        self.add_expense("1000.00", when=date(2026, 10, 1))
+        self.add_expense("500.00", when=date(2026, 10, 31))
+        self.add_expense("777.00", when=date(2026, 9, 30))
+        self.add_expense("888.00", when=date(2026, 11, 1))
+
+        self.assertEqual(self.budget.period_end, date(2026, 10, 31))
+        self.assertEqual(spend_for(self.budget), Decimal("1500.00"))
+
+    def test_remaining_and_percentage(self):
+        self.add_expense("1000.00")
+        self.assertEqual(remaining_for(self.budget), Decimal("4000.00"))
+        self.assertEqual(percentage_used(self.budget), Decimal("20.0"))
+
+    def test_remaining_goes_negative_once_the_limit_is_passed(self):
+        self.add_expense("6000.00")
+        self.assertEqual(remaining_for(self.budget), Decimal("-1000.00"))
+        self.assertEqual(percentage_used(self.budget), Decimal("120.0"))
+
+    def test_budget_list_shows_spend_remaining_and_percentage(self):
+        self.add_expense("1000.00")
+        self.client.force_login(self.user)
+
+        response = self.client.get(reverse("budget_list"))
+
+        self.assertEqual(response.status_code, 200)
+        row = response.context["rows"][0]
+        self.assertEqual(row["spent"], Decimal("1000.00"))
+        self.assertEqual(row["remaining"], Decimal("4000.00"))
+        self.assertEqual(row["percentage"], Decimal("20.0"))
+        self.assertContains(response, "1000.00")

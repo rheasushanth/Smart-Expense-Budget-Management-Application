@@ -4,17 +4,19 @@ from django.shortcuts import get_object_or_404, redirect, render
 
 from .forms import BudgetForm
 from .models import Budget
+from .services import budget_status
 
 
 @login_required
 def budget_list(request):
-    """List the signed-in user's budgets (FR-012)."""
+    """List the signed-in user's budgets with spend to date (FR-012, FR-013)."""
     budgets = (
         Budget.objects.filter(user=request.user)
         .select_related("category")
         .order_by("-start_date")
     )
-    return render(request, "budgets/budget_list.html", {"budgets": budgets})
+    rows = [budget_status(budget) for budget in budgets]
+    return render(request, "budgets/budget_list.html", {"rows": rows})
 
 
 @login_required
