@@ -145,7 +145,7 @@ AUTH_USER_MODEL = "accounts.User"
 
 
 # Login URL
-LOGIN_URL = "/admin/login/"
+LOGIN_URL = "login"
 
 
 # Session security: expire after 30 minutes

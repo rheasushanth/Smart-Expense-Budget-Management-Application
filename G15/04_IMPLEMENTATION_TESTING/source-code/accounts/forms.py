@@ -39,25 +39,25 @@ class RegistrationForm(forms.ModelForm):
             if len(password1) < 8:
                 self.add_error(
                     "password1",
-                    "Password must be at least 8 characters long."
+                    "Password must be at least 8 characters long.",
                 )
 
             if not any(char.isalpha() for char in password1):
                 self.add_error(
                     "password1",
-                    "Password must contain at least one letter."
+                    "Password must contain at least one letter.",
                 )
 
             if not any(char.isdigit() for char in password1):
                 self.add_error(
                     "password1",
-                    "Password must contain at least one digit."
+                    "Password must contain at least one digit.",
                 )
 
         if password1 and password2 and password1 != password2:
             self.add_error(
                 "password2",
-                "The passwords do not match."
+                "The passwords do not match.",
             )
 
         return cleaned_data
@@ -70,8 +70,6 @@ class RegistrationForm(forms.ModelForm):
             user.save()
 
         return user
-from django import forms
-from .models import User
 
 
 class ProfileForm(forms.ModelForm):
@@ -80,7 +78,8 @@ class ProfileForm(forms.ModelForm):
         fields = ["name", "email"]
 
     def clean_email(self):
-        email = self.cleaned_data["email"].strip()
+        email = self.cleaned_data["email"].strip().lower()
+
         existing_users = User.objects.filter(
             email__iexact=email
         ).exclude(pk=self.instance.pk)
