@@ -14,6 +14,21 @@
 </ul>
 {% endif %}
 
+{% if alerts %}
+<section class="alerts" aria-label="Budget alerts">
+    <h2>Alerts</h2>
+    {% for alert in alerts %}
+    <div class="alert alert-{{ alert.kind|lower }}">
+        <span>{{ alert.message }}</span>
+        <form method="post" action="{% url 'alert_dismiss' alert.pk %}">
+            {% csrf_token %}
+            <button type="submit">Dismiss</button>
+        </form>
+    </div>
+    {% endfor %}
+</section>
+{% endif %}
+
 {% if rows %}
 <table class="data-table">
     <thead>

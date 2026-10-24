@@ -54,6 +54,18 @@ def percentage_used(budget, spend=None):
     return (spend / budget.limit_amount * 100).quantize(Decimal("0.1"))
 
 
+def threshold_amount(budget):
+    """Exact spend at which the threshold alert becomes due (FR-015).
+
+    Alerts compare money against this value rather than against the rounded
+    percentage from percentage_used: 3999 of a 5000 budget displays as 80.0%
+    but is 79.98%, and must not raise an alert (TC-BUD-04).
+    """
+    return (budget.limit_amount * budget.threshold_pct / 100).quantize(
+        Decimal("0.01")
+    )
+
+
 def budget_status(budget):
     """Everything the budget list and report need, in one query pass."""
     spend = spend_for(budget)
@@ -63,5 +75,5 @@ def budget_status(budget):
         "remaining": remaining_for(budget, spend),
         "percentage": percentage_used(budget, spend),
         "over_limit": spend > budget.limit_amount,
-        "at_threshold": percentage_used(budget, spend) >= budget.threshold_pct,
+        "at_threshold": spend >= threshold_amount(budget),
     }
