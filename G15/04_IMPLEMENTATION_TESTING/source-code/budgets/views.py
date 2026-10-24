@@ -3,20 +3,42 @@ from django.contrib.auth.decorators import login_required
 from django.shortcuts import get_object_or_404, redirect, render
 
 from .forms import BudgetForm
-from .models import Budget
+from .models import Alert, Budget
 from .services import budget_status
 
 
 @login_required
 def budget_list(request):
-    """List the signed-in user's budgets with spend to date (FR-012, FR-013)."""
+    """Budgets with spend to date, plus unread alerts.
+
+    FR-012, FR-013; the alert panel is how FR-015 and FR-016 notify the user.
+    """
     budgets = (
         Budget.objects.filter(user=request.user)
         .select_related("category")
         .order_by("-start_date")
     )
     rows = [budget_status(budget) for budget in budgets]
-    return render(request, "budgets/budget_list.html", {"rows": rows})
+    alerts = (
+        Alert.objects.filter(budget__user=request.user, is_read=False)
+        .select_related("budget", "budget__category")
+        .order_by("-triggered_on", "-alert_id")
+    )
+    return render(
+        request,
+        "budgets/budget_list.html",
+        {"rows": rows, "alerts": alerts},
+    )
+
+
+@login_required
+def alert_dismiss(request, alert_id):
+    """Mark an alert as read (SRS Appendix B.6, is_read)."""
+    alert = get_object_or_404(Alert, pk=alert_id, budget__user=request.user)
+    if request.method == "POST":
+        alert.is_read = True
+        alert.save(update_fields=["is_read"])
+    return redirect("budget_list")
 
 
 @login_required
