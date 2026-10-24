@@ -1,0 +1,17 @@
+
+{% extends "base.html" %}
+
+{% block title %}Record Income | Smart Expense{% endblock %}
+
+{% block content %}
+<section class="welcome-card">
+    <h1>Record Income</h1>
+    <p class="subtitle">Enter the details of money received.</p>
+
+    <form method="post">
+        {% csrf_token %}
+        {{ form.as_p }}
+        <button type="submit">Save Income</button>
+    </form>
+</section>
+{% endblock %}
