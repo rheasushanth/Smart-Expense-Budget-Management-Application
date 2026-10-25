@@ -1,0 +1,48 @@
+
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>Import Transactions from CSV</h2>
+
+    <p>Upload a CSV file with these columns:</p>
+    <code>date,amount,type,category,note</code>
+
+    <form method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+
+        <div class="mb-3">
+            <label for="csv_file" class="form-label">Choose CSV file</label>
+            <input
+                type="file"
+                name="csv_file"
+                id="csv_file"
+                class="form-control"
+                accept=".csv"
+                required
+            >
+        </div>
+
+        <button type="submit" class="btn btn-primary">Import Transactions</button>
+    </form>
+
+    {% if error %}
+        <div class="alert alert-danger mt-3">{{ error }}</div>
+    {% endif %}
+
+    {% if imported != None %}
+        <div class="alert alert-success mt-3">
+            Successfully imported {{ imported }} transaction(s).
+        </div>
+    {% endif %}
+
+    {% if errors %}
+        <h3 class="mt-4">Rows with errors</h3>
+        <ul>
+            {% for item in errors %}
+                <li>Row {{ item.row }}: {{ item.reason }}</li>
+            {% endfor %}
+        </ul>
+    {% endif %}
+</div>
+{% endblock %}
