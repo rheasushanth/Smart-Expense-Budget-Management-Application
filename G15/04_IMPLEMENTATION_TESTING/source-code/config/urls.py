@@ -14,4 +14,5 @@ urlpatterns = [
     path("admin/", admin.site.urls),
     path("accounts/", include("accounts.urls")),
     path("transactions/", include("transactions.urls")),
+    path("recurring/", include("recurring.urls")),
 ]
