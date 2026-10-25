@@ -255,3 +255,109 @@ class CategoryValidationTests(TestCase):
         })
         self.assertFalse(form.is_valid())
         self.assertIn("amount", form.errors)
+
+
+class EditDeleteTransactionTests(TestCase):
+    def setUp(self):
+        User = get_user_model()
+        self.user = User.objects.create_user(
+            email="editdelete@example.com",
+            password="TestPassword123!",
+            name="Edit Delete User",
+        )
+        self.category = Category.objects.create(
+            name="Groceries",
+            type=Category.CategoryType.EXPENSE,
+            is_active=True,
+            created_by=self.user,
+        )
+        self.transaction = Transaction.objects.create(
+            user=self.user,
+            type=Transaction.TransactionType.EXPENSE,
+            source="Manual",
+            amount=Decimal("250.00"),
+            category=self.category,
+            date=date.today(),
+            note="Original note",
+        )
+        self.client.login(
+            email="editdelete@example.com",
+            password="TestPassword123!",
+        )
+
+    def test_TC_TXN_04_user_can_edit_transaction(self):
+        response = self.client.post(
+            reverse(
+                "edit_transaction",
+                args=[self.transaction.txn_id],
+            ),
+            {
+                "amount": "300.00",
+                "category": self.category.pk,
+                "date": date.today().isoformat(),
+                "note": "Updated note",
+            },
+        )
+
+        self.assertRedirects(response, reverse("record_expense"))
+        self.transaction.refresh_from_db()
+        self.assertEqual(self.transaction.amount, Decimal("300.00"))
+        self.assertEqual(self.transaction.note, "Updated note")
+
+    def test_user_can_view_delete_confirmation(self):
+        response = self.client.get(
+            reverse(
+                "delete_transaction",
+                args=[self.transaction.txn_id],
+            )
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(
+            response,
+            "transactions/delete_transaction.html",
+        )
+
+    def test_user_can_delete_transaction_with_post(self):
+        response = self.client.post(
+            reverse(
+                "delete_transaction",
+                args=[self.transaction.txn_id],
+            )
+        )
+
+        self.assertRedirects(response, reverse("record_expense"))
+        self.assertFalse(
+            Transaction.objects.filter(
+                txn_id=self.transaction.txn_id
+            ).exists()
+        )
+
+    def test_user_cannot_edit_another_users_transaction(self):
+        User = get_user_model()
+        other_user = User.objects.create_user(
+            email="anotheruser@example.com",
+            password="TestPassword123!",
+            name="Another User",
+        )
+        other_transaction = Transaction.objects.create(
+            user=other_user,
+            type=Transaction.TransactionType.EXPENSE,
+            source="Manual",
+            amount=Decimal("200.00"),
+            category=self.category,
+            date=date.today(),
+            note="Private transaction",
+        )
+
+        response = self.client.get(
+            reverse(
+                "edit_transaction",
+                args=[other_transaction.txn_id],
+            )
+        )
+
+        self.assertEqual(response.status_code, 404)
+        other_transaction.refresh_from_db()
+        self.assertEqual(other_transaction.amount, Decimal("200.00"))
+
