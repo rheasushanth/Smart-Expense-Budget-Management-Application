@@ -20,8 +20,10 @@ from django.urls import include, path
 
 from .views import home
 
+
 urlpatterns = [
     path("", home, name="home"),
     path("budgets/", include("budgets.urls")),
+    path("transactions/", include("transactions.urls")),
     path("admin/", admin.site.urls),
 ]
