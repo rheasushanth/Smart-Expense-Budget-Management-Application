@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+
+{% block title %}Recurring rules{% endblock %}
+
+{% block content %}
+<section class="page-head">
+    <h1>Recurring rules</h1>
+    <a class="button" href="{% url 'rule_create' %}">New rule</a>
+</section>
+
+{% if messages %}
+<ul class="messages">
+    {% for message in messages %}<li>{{ message }}</li>{% endfor %}
+</ul>
+{% endif %}
+
+{% if rules %}
+<table class="data-table">
+    <thead>
+        <tr>
+            <th>Category</th>
+            <th>Type</th>
+            <th>Amount</th>
+            <th>Frequency</th>
+            <th>Next run</th>
+            <th>Status</th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for rule in rules %}
+        <tr{% if not rule.is_active %} class="inactive"{% endif %}>
+            <td>{{ rule.category.name }}</td>
+            <td>{{ rule.category.type }}</td>
+            <td>{{ rule.amount }}</td>
+            <td>{{ rule.frequency }}</td>
+            <td>{{ rule.next_run_date }}</td>
+            <td>
+                {% if rule.is_active %}<span class="tag">Active</span>
+                {% else %}<span class="tag tag-muted">Inactive</span>{% endif %}
+            </td>
+            <td>
+                {% if rule.is_active %}
+                <a href="{% url 'rule_edit' rule.pk %}">Edit</a>
+                <a href="{% url 'rule_deactivate' rule.pk %}">Deactivate</a>
+                {% endif %}
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<p class="empty">No recurring rules yet. Create one to generate transactions automatically.</p>
+{% endif %}
+{% endblock %}
