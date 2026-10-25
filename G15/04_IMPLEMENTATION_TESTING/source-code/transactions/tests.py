@@ -1,7 +1,7 @@
 
 from datetime import date
 from decimal import Decimal
-from urllib import response
+
 
 from django.contrib.auth import get_user_model
 from django.test import TestCase
@@ -257,6 +257,7 @@ class CategoryValidationTests(TestCase):
         self.assertFalse(form.is_valid())
         self.assertIn("amount", form.errors)
 
+
 class EditDeleteTransactionTests(TestCase):
     def setUp(self):
         User = get_user_model()
@@ -469,3 +470,4 @@ class CSVImportTests(TestCase):
         )
         self.assertEqual(len(response.context["errors"]), 1)
         self.assertIn("Duplicate", response.context["errors"][0]["reason"])
+

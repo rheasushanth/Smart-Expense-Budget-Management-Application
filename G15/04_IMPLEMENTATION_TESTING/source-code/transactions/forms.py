@@ -18,6 +18,7 @@ class IncomeForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.fields["category"].required = True
         self.fields["category"].queryset = Category.objects.filter(
             type=Category.CategoryType.INCOME,
             is_active=True,
@@ -30,6 +31,7 @@ class IncomeForm(forms.ModelForm):
                 "Amount must be greater than zero."
             )
         return amount
+
 
 class ExpenseForm(forms.ModelForm):
     class Meta:
@@ -44,6 +46,7 @@ class ExpenseForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.fields["category"].required = True
         self.fields["category"].queryset = Category.objects.filter(
             type=Category.CategoryType.EXPENSE,
             is_active=True,
