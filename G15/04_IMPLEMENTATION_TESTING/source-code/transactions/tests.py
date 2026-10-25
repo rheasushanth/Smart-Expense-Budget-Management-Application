@@ -363,6 +363,7 @@ class EditDeleteTransactionTests(TestCase):
         self.assertEqual(other_transaction.amount, Decimal("200.00"))
 
 
+
 class CSVImportTests(TestCase):
     def setUp(self):
         User = get_user_model()
@@ -470,4 +471,25 @@ class CSVImportTests(TestCase):
         )
         self.assertEqual(len(response.context["errors"]), 1)
         self.assertIn("Duplicate", response.context["errors"][0]["reason"])
+    def test_TC_SEC_03_rejects_csv_over_2mb(self):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+
+        oversized_content = b"a" * (10 * 1024 * 1024)
+        upload = SimpleUploadedFile(
+            "oversized.csv",
+            oversized_content,
+            content_type="text/csv",
+        )
+
+        response = self.client.post(
+            reverse("import_transactions"),
+            {"csv_file": upload},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "File must be 2 MB or smaller.")
+        self.assertEqual(
+            Transaction.objects.filter(user=self.user).count(),
+            0,
+        )
 

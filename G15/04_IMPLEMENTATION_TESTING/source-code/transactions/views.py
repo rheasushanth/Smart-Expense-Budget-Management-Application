@@ -2,7 +2,7 @@
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import get_object_or_404, redirect, render
 
-from .forms import ExpenseForm, IncomeForm
+from .forms import CSVUploadForm, ExpenseForm, IncomeForm
 from .importer import import_transactions
 from .models import Transaction
 
@@ -112,34 +112,29 @@ def delete_transaction(request, txn_id):
     )
 
 
+
 @login_required
 def import_csv_transactions(request):
     if request.method == "POST":
-        csv_file = request.FILES.get("csv_file")
+        form = CSVUploadForm(request.POST, request.FILES)
 
-        if not csv_file:
+        if form.is_valid():
+            csv_file = form.cleaned_data["csv_file"]
+            result = import_transactions(csv_file, request.user)
+
             return render(
                 request,
                 "transactions/import_transactions.html",
-                {"error": "Please select a CSV file."},
+                {
+                    "imported": result["imported"],
+                    "errors": result["errors"],
+                },
             )
+    else:
+        form = CSVUploadForm()
 
-        if not csv_file.name.lower().endswith(".csv"):
-            return render(
-                request,
-                "transactions/import_transactions.html",
-                {"error": "Please upload a CSV file."},
-            )
-
-        result = import_transactions(csv_file, request.user)
-
-        return render(
-            request,
-            "transactions/import_transactions.html",
-            {
-                "imported": result["imported"],
-                "errors": result["errors"],
-            },
-        )
-
-    return render(request, "transactions/import_transactions.html")
+    return render(
+        request,
+        "transactions/import_transactions.html",
+        {"form": form},
+    )
