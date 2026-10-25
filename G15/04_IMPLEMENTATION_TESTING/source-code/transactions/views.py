@@ -1,8 +1,9 @@
 
 from django.contrib.auth.decorators import login_required
-from django.shortcuts import redirect, render
+from django.shortcuts import get_object_or_404, redirect, render
 
 from .forms import ExpenseForm, IncomeForm
+from .models import Transaction
 
 
 @login_required
@@ -25,6 +26,7 @@ def record_income(request):
         {"form": form},
     )
 
+
 @login_required
 def record_expense(request):
     if request.method == "POST":
@@ -44,10 +46,6 @@ def record_expense(request):
         "transactions/record_expense.html",
         {"form": form},
     )
-
-from django.shortcuts import get_object_or_404
-from django.views.decorators.http import require_POST
-from .models import Transaction
 
 
 @login_required
@@ -73,8 +71,11 @@ def edit_transaction(request, txn_id):
             updated_transaction.type = transaction.type
             updated_transaction.source = transaction.source
             updated_transaction.save()
-            return redirect("record_income" if transaction.type == "Income"
-                            else "record_expense")
+            return redirect(
+                "record_income"
+                if transaction.type == "Income"
+                else "record_expense"
+            )
     else:
         form = form_class(instance=transaction)
 
@@ -83,7 +84,6 @@ def edit_transaction(request, txn_id):
         "transactions/edit_transaction.html",
         {"form": form, "transaction": transaction},
     )
-
 
 
 @login_required

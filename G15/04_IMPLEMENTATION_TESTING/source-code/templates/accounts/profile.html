@@ -1,0 +1,27 @@
+
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container" style="max-width: 600px; margin: 40px auto;">
+    <h1>My Profile</h1>
+    <p>View and update your account details.</p>
+
+    {% if messages %}
+        {% for message in messages %}
+            <p>{{ message }}</p>
+        {% endfor %}
+    {% endif %}
+
+    <form method="post">
+        {% csrf_token %}
+        {{ form.as_p }}
+        <button type="submit">Save Changes</button>
+    </form>
+
+    <form method="post" action="{% url 'logout' %}"
+          style="margin-top: 20px;">
+        {% csrf_token %}
+        <button type="submit">Log Out</button>
+    </form>
+</div>
+{% endblock %}

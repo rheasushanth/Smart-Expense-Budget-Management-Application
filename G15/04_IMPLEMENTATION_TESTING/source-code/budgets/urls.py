@@ -7,4 +7,5 @@ urlpatterns = [
     path("new/", views.budget_create, name="budget_create"),
     path("<int:budget_id>/edit/", views.budget_edit, name="budget_edit"),
     path("<int:budget_id>/delete/", views.budget_delete, name="budget_delete"),
+    path("alerts/<int:alert_id>/dismiss/", views.alert_dismiss, name="alert_dismiss"),
 ]

@@ -256,6 +256,7 @@ class CategoryValidationTests(TestCase):
         self.assertFalse(form.is_valid())
         self.assertIn("amount", form.errors)
 
+
 class EditDeleteTransactionTests(TestCase):
     def setUp(self):
         User = get_user_model()
@@ -359,3 +360,4 @@ class EditDeleteTransactionTests(TestCase):
         self.assertEqual(response.status_code, 404)
         other_transaction.refresh_from_db()
         self.assertEqual(other_transaction.amount, Decimal("200.00"))
+

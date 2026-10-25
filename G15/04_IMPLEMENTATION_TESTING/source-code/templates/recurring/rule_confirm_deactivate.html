@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+
+{% block title %}Deactivate rule{% endblock %}
+
+{% block content %}
+<section class="page-head">
+    <h1>Deactivate recurring rule</h1>
+</section>
+
+<div class="form-card">
+    <p>
+        Stop the {{ rule.category.name }} rule of {{ rule.amount }}
+        ({{ rule.frequency|lower }}) from generating further transactions?
+        Transactions it has already created are kept.
+    </p>
+
+    <form method="post">
+        {% csrf_token %}
+        <div class="actions">
+            <button type="submit">Deactivate</button>
+            <a href="{% url 'rule_list' %}">Cancel</a>
+        </div>
+    </form>
+</div>
+{% endblock %}
