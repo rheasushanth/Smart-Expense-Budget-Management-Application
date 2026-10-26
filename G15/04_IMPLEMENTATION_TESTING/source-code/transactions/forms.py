@@ -59,3 +59,23 @@ class ExpenseForm(forms.ModelForm):
                 "Amount must be greater than zero."
             )
         return amount
+MAX_UPLOAD_BYTES = 2 * 1024 * 1024
+
+
+class CSVUploadForm(forms.Form):
+    csv_file = forms.FileField()
+
+    def clean_csv_file(self):
+        upload = self.cleaned_data["csv_file"]
+
+        if upload.size > MAX_UPLOAD_BYTES:
+            raise forms.ValidationError(
+                "File must be 2 MB or smaller."
+            )
+
+        if not upload.name.lower().endswith(".csv"):
+            raise forms.ValidationError(
+                "Please upload a CSV file."
+            )
+
+        return upload

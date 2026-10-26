@@ -2,7 +2,8 @@
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import get_object_or_404, redirect, render
 
-from .forms import ExpenseForm, IncomeForm
+from .forms import CSVUploadForm, ExpenseForm, IncomeForm
+from .importer import import_transactions
 from .models import Transaction
 
 
@@ -108,4 +109,32 @@ def delete_transaction(request, txn_id):
         request,
         "transactions/delete_transaction.html",
         {"transaction": transaction},
+    )
+
+
+
+@login_required
+def import_csv_transactions(request):
+    if request.method == "POST":
+        form = CSVUploadForm(request.POST, request.FILES)
+
+        if form.is_valid():
+            csv_file = form.cleaned_data["csv_file"]
+            result = import_transactions(csv_file, request.user)
+
+            return render(
+                request,
+                "transactions/import_transactions.html",
+                {
+                    "imported": result["imported"],
+                    "errors": result["errors"],
+                },
+            )
+    else:
+        form = CSVUploadForm()
+
+    return render(
+        request,
+        "transactions/import_transactions.html",
+        {"form": form},
     )
