@@ -6,14 +6,28 @@ from django.urls import reverse
 from .models import Category
 
 
-class CategoryAdminTest(TestCase):
+class CategoryManagementTest(TestCase):
     @classmethod
     def setUpTestData(cls):
         User = get_user_model()
 
-        cls.admin_user = User.objects.create_superuser(
+        # Application Administrator, not a Django superuser.
+        cls.admin_user = User.objects.create_user(
             email="admin@example.com",
             password="TestPassword123!",
+            name="Category Administrator",
+            role="Administrator",
+            is_staff=False,
+            is_superuser=False,
+        )
+
+        cls.customer = User.objects.create_user(
+            email="customer@example.com",
+            password="TestPassword123!",
+            name="Test Customer",
+            role="Customer",
+            is_staff=False,
+            is_superuser=False,
         )
 
         cls.category = Category.objects.create(
@@ -26,82 +40,77 @@ class CategoryAdminTest(TestCase):
     def setUp(self):
         self.client.force_login(self.admin_user)
 
-    def test_admin_can_add_category(self):
+    def test_administrator_can_view_categories(self):
+        response = self.client.get(reverse("categories:list"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Food")
+
+    def test_administrator_can_add_category(self):
         response = self.client.post(
-            reverse("admin:categories_category_add"),
+            reverse("categories:add"),
             {
                 "name": "Travel",
                 "type": Category.CategoryType.EXPENSE,
                 "is_active": True,
-                "created_by": self.admin_user.pk,
-                "_save": "Save",
             },
         )
 
-        self.assertEqual(response.status_code, 302)
-        self.assertTrue(
-            Category.objects.filter(
-                name="Travel",
-                type=Category.CategoryType.EXPENSE,
-            ).exists()
-        )
+        self.assertRedirects(response, reverse("categories:list"))
+        category = Category.objects.get(name="Travel")
+        self.assertEqual(category.created_by, self.admin_user)
 
-    def test_admin_can_edit_category(self):
+    def test_administrator_can_edit_category(self):
         response = self.client.post(
             reverse(
-                "admin:categories_category_change",
-                args=[self.category.pk],
+                "categories:edit",
+                args=[self.category.category_id],
             ),
             {
                 "name": "Groceries",
                 "type": Category.CategoryType.EXPENSE,
                 "is_active": True,
-                "created_by": self.admin_user.pk,
-                "_save": "Save",
             },
         )
 
-        self.assertEqual(response.status_code, 302)
-
+        self.assertRedirects(response, reverse("categories:list"))
         self.category.refresh_from_db()
         self.assertEqual(self.category.name, "Groceries")
 
-    def test_admin_can_disable_and_reenable_category(self):
-        change_url = reverse(
-            "admin:categories_category_change",
-            args=[self.category.pk],
+    def test_administrator_can_disable_and_reenable_category(self):
+        disable_url = reverse(
+            "categories:disable",
+            args=[self.category.category_id],
+        )
+        enable_url = reverse(
+            "categories:enable",
+            args=[self.category.category_id],
         )
 
-        # Disable the category
-        response = self.client.post(
-            change_url,
-            {
-                "name": self.category.name,
-                "type": self.category.type,
-                "is_active": False,
-                "created_by": self.admin_user.pk,
-                "_save": "Save",
-            },
-        )
-
-        self.assertEqual(response.status_code, 302)
+        response = self.client.post(disable_url)
+        self.assertRedirects(response, reverse("categories:list"))
 
         self.category.refresh_from_db()
         self.assertFalse(self.category.is_active)
 
-        # Re-enable the category
-        response = self.client.post(
-            change_url,
-            {
-                "name": self.category.name,
-                "type": self.category.type,
-                "is_active": True,
-                "created_by": self.admin_user.pk,
-                "_save": "Save",
-            },
-        )
-
-        self.assertEqual(response.status_code, 302)
+        response = self.client.post(enable_url)
+        self.assertRedirects(response, reverse("categories:list"))
 
         self.category.refresh_from_db()
         self.assertTrue(self.category.is_active)
+
+    def test_customer_receives_403_for_category_management(self):
+        self.client.force_login(self.customer)
+
+        urls = [
+            reverse("categories:list"),
+            reverse("categories:add"),
+            reverse("categories:edit", args=[self.category.category_id]),
+            reverse("categories:disable", args=[self.category.category_id]),
+            reverse("categories:enable", args=[self.category.category_id]),
+        ]
+
+        for url in urls:
+            with self.subTest(url=url):
+                response = self.client.get(url)
+                self.assertEqual(response.status_code, 403)

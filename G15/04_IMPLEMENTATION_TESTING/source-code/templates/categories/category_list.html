@@ -1,0 +1,59 @@
+
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container">
+    <h1>Manage Categories</h1>
+
+    <p>
+        <a href="{% url 'categories:add' %}">Add Category</a>
+    </p>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Type</th>
+                <th>Status</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for category in categories %}
+            <tr>
+                <td>{{ category.name }}</td>
+                <td>{{ category.type }}</td>
+                <td>
+                    {% if category.is_active %}Active{% else %}Disabled{% endif %}
+                </td>
+                <td>
+                    <a href="{% url 'categories:edit' category.category_id %}">
+                        Edit
+                    </a>
+
+                    {% if category.is_active %}
+                    <form method="post"
+                          action="{% url 'categories:disable' category.category_id %}"
+                          style="display:inline">
+                        {% csrf_token %}
+                        <button type="submit">Disable</button>
+                    </form>
+                    {% else %}
+                    <form method="post"
+                          action="{% url 'categories:enable' category.category_id %}"
+                          style="display:inline">
+                        {% csrf_token %}
+                        <button type="submit">Re-enable</button>
+                    </form>
+                    {% endif %}
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="4">No categories found.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}
