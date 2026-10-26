@@ -1,8 +1,10 @@
 
 from django.contrib.auth.decorators import login_required
-from django.shortcuts import redirect, render
+from django.shortcuts import get_object_or_404, redirect, render
 
-from .forms import ExpenseForm, IncomeForm
+from .forms import CSVUploadForm, ExpenseForm, IncomeForm
+from .importer import import_transactions
+from .models import Transaction
 
 
 @login_required
@@ -25,6 +27,7 @@ def record_income(request):
         {"form": form},
     )
 
+
 @login_required
 def record_expense(request):
     if request.method == "POST":
@@ -42,5 +45,96 @@ def record_expense(request):
     return render(
         request,
         "transactions/record_expense.html",
+        {"form": form},
+    )
+
+
+@login_required
+def edit_transaction(request, txn_id):
+    transaction = get_object_or_404(
+        Transaction,
+        txn_id=txn_id,
+        user=request.user,
+        source="Manual",
+    )
+
+    form_class = (
+        IncomeForm
+        if transaction.type == "Income"
+        else ExpenseForm
+    )
+
+    if request.method == "POST":
+        form = form_class(request.POST, instance=transaction)
+        if form.is_valid():
+            updated_transaction = form.save(commit=False)
+            updated_transaction.user = request.user
+            updated_transaction.type = transaction.type
+            updated_transaction.source = transaction.source
+            updated_transaction.save()
+            return redirect(
+                "record_income"
+                if transaction.type == "Income"
+                else "record_expense"
+            )
+    else:
+        form = form_class(instance=transaction)
+
+    return render(
+        request,
+        "transactions/edit_transaction.html",
+        {"form": form, "transaction": transaction},
+    )
+
+
+@login_required
+def delete_transaction(request, txn_id):
+    transaction = get_object_or_404(
+        Transaction,
+        txn_id=txn_id,
+        user=request.user,
+        source="Manual",
+    )
+
+    if request.method == "POST":
+        transaction_type = transaction.type
+        transaction.delete()
+        return redirect(
+            "record_income"
+            if transaction_type == "Income"
+            else "record_expense"
+        )
+
+    return render(
+        request,
+        "transactions/delete_transaction.html",
+        {"transaction": transaction},
+    )
+
+
+
+@login_required
+def import_csv_transactions(request):
+    if request.method == "POST":
+        form = CSVUploadForm(request.POST, request.FILES)
+
+        if form.is_valid():
+            csv_file = form.cleaned_data["csv_file"]
+            result = import_transactions(csv_file, request.user)
+
+            return render(
+                request,
+                "transactions/import_transactions.html",
+                {
+                    "imported": result["imported"],
+                    "errors": result["errors"],
+                },
+            )
+    else:
+        form = CSVUploadForm()
+
+    return render(
+        request,
+        "transactions/import_transactions.html",
         {"form": form},
     )
