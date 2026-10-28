@@ -1,3 +1,4 @@
+
 from decimal import Decimal
 
 from django.conf import settings
@@ -42,8 +43,19 @@ class RecurringRule(models.Model):
 
         if self.category_id and not self.category.is_active:
             raise ValidationError(
-                {"category": "This category has been disabled and cannot be used."}
+                {
+                    "category": (
+                        "This category has been disabled and cannot be used."
+                    )
+                }
             )
+
+    def save(self, *args, **kwargs):
+        """Prevent assigning a disabled category to a new recurring rule."""
+        if self._state.adding and self.category_id:
+            self.category.validate_active()
+
+        super().save(*args, **kwargs)
 
     def deactivate(self):
         """Stop the rule generating further transactions (FR-019)."""

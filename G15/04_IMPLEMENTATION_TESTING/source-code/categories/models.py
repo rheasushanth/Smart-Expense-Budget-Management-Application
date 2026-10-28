@@ -1,6 +1,6 @@
 from django.conf import settings
 from django.db import models
-
+from django.core.exceptions import ValidationError
 
 class Category(models.Model):
     class CategoryType(models.TextChoices):
@@ -24,6 +24,11 @@ class Category(models.Model):
                 name="unique_category_name_type",
             )
         ]
-
+    def validate_active(self):
+        """Reject assigning a disabled category to a new object (FR-021)."""
+        if not self.is_active:
+            raise ValidationError(
+                "This category has been disabled and cannot be assigned."
+            )
     def __str__(self):
         return f"{self.name} ({self.type})"

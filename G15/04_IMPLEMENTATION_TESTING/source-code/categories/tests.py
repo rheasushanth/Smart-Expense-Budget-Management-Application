@@ -2,6 +2,14 @@
 from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.urls import reverse
+from datetime import date
+from decimal import Decimal
+
+from django.core.exceptions import ValidationError
+
+from budgets.models import Budget
+from recurring.models import RecurringRule
+from transactions.models import Transaction
 
 from .models import Category
 
@@ -114,3 +122,82 @@ class CategoryManagementTest(TestCase):
             with self.subTest(url=url):
                 response = self.client.get(url)
                 self.assertEqual(response.status_code, 403)
+
+class DisabledCategoryAssignmentTest(TestCase):
+    """TC-ADM-02: Disabled categories cannot be assigned to new records."""
+
+    @classmethod
+    def setUpTestData(cls):
+        User = get_user_model()
+
+        cls.user = User.objects.create_user(
+            email="fr021@example.com",
+            password="TestPassword123!",
+            name="FR021 Test User",
+            role="Customer",
+        )
+
+        cls.admin = User.objects.create_user(
+            email="fr021-admin@example.com",
+            password="TestPassword123!",
+            name="FR021 Test Administrator",
+            role="Administrator",
+        )
+
+        cls.disabled_category = Category.objects.create(
+            name="Disabled Food",
+            type=Category.CategoryType.EXPENSE,
+            is_active=False,
+            created_by=cls.admin,
+        )
+
+    def test_disabled_category_cannot_be_assigned_to_new_transaction(self):
+        with self.assertRaises(ValidationError):
+            Transaction.objects.create(
+                user=self.user,
+                category=self.disabled_category,
+                amount=Decimal("100.00"),
+                type=Transaction.TransactionType.EXPENSE,
+                date=date(2026, 10, 28),
+            )
+
+        self.assertFalse(
+            Transaction.objects.filter(
+                user=self.user,
+                category=self.disabled_category,
+            ).exists()
+        )
+
+    def test_disabled_category_cannot_be_assigned_to_new_budget(self):
+        with self.assertRaises(ValidationError):
+            Budget.objects.create(
+                user=self.user,
+                category=self.disabled_category,
+                period=Budget.Period.MONTHLY,
+                start_date=date(2026, 10, 1),
+                limit_amount=Decimal("5000.00"),
+            )
+
+        self.assertFalse(
+            Budget.objects.filter(
+                user=self.user,
+                category=self.disabled_category,
+            ).exists()
+        )
+
+    def test_disabled_category_cannot_be_assigned_to_new_recurring_rule(self):
+        with self.assertRaises(ValidationError):
+            RecurringRule.objects.create(
+                user=self.user,
+                category=self.disabled_category,
+                amount=Decimal("250.00"),
+                frequency=RecurringRule.Frequency.MONTHLY,
+                next_run_date=date(2026, 11, 1),
+            )
+
+        self.assertFalse(
+            RecurringRule.objects.filter(
+                user=self.user,
+                category=self.disabled_category,
+            ).exists()
+        )
