@@ -201,3 +201,36 @@ class DisabledCategoryAssignmentTest(TestCase):
                 category=self.disabled_category,
             ).exists()
         )
+
+class RegisteredUsersAdminTest(TestCase):
+    """TC-ADM-03: Administrator can view registered users."""
+
+    @classmethod
+    def setUpTestData(cls):
+        User = get_user_model()
+
+        cls.admin_user = User.objects.create_superuser(
+            email="fr022-admin@example.com",
+            password="TestPassword123!",
+            name="FR022 Administrator",
+        )
+
+        cls.registered_user = User.objects.create_user(
+            email="fr022-customer@example.com",
+            password="TestPassword123!",
+            name="FR022 Registered Customer",
+            role="Customer",
+        )
+
+    def setUp(self):
+        self.client.force_login(self.admin_user)
+
+    def test_administrator_can_view_registered_users(self):
+        response = self.client.get(
+            reverse("admin:accounts_user_changelist")
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "FR022 Registered Customer")
+        self.assertContains(response, "fr022-customer@example.com")
+        self.assertContains(response, "FR022 Administrator")
