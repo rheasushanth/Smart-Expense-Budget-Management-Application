@@ -494,3 +494,81 @@ class CSVImportTests(TestCase):
             0,
         )
 
+    def test_TC_TXN_07_existing_and_in_file_duplicates_are_skipped(self):
+        from datetime import date
+        from django.core.files.uploadedfile import SimpleUploadedFile
+
+        # Create a transaction that already exists in the database.
+        Transaction.objects.create(
+            user=self.user,
+            date=date(2026, 10, 11),
+            amount=Decimal("100.00"),
+            category=self.expense_category,
+            type=Transaction.TransactionType.EXPENSE,
+            note="Bus",
+        )
+
+        csv_content = (
+            "date,amount,type,category,note\n"
+            "2026-10-11,100.00,Expense,Food,Bus\n"
+            "2026-10-12,50.00,Expense,Food,Lunch\n"
+            "2026-10-13,200.00,Income,Salary,Paycheck\n"
+            "2026-10-12,50.00,Expense,Food,Lunch\n"
+        )
+
+        upload = SimpleUploadedFile(
+            "tc_txn_07.csv",
+            csv_content.encode("utf-8"),
+            content_type="text/csv",
+        )
+
+        response = self.client.post(
+            reverse("import_transactions"),
+            {"csv_file": upload},
+        )
+
+        self.assertEqual(response.status_code, 200)
+
+        # Two new rows should import; two duplicate rows should be reported.
+        self.assertEqual(response.context["imported"], 2)
+        self.assertEqual(len(response.context["errors"]), 2)
+
+        reasons = [
+            error["reason"] for error in response.context["errors"]
+        ]
+        self.assertTrue(
+            all("Duplicate" in reason for reason in reasons)
+        )
+
+        # Exactly two CSV transactions should have been saved.
+        self.assertEqual(
+            Transaction.objects.filter(
+                user=self.user,
+                source=Transaction.Source.CSV,
+            ).count(),
+            2,
+        )
+
+        # The repeated Lunch transaction must exist only once.
+        self.assertEqual(
+            Transaction.objects.filter(
+                user=self.user,
+                date=date(2026, 10, 12),
+                amount=Decimal("50.00"),
+                note="Lunch",
+                source=Transaction.Source.CSV,
+            ).count(),
+            1,
+        )
+
+        # The Paycheck transaction must also be saved.
+        self.assertEqual(
+            Transaction.objects.filter(
+                user=self.user,
+                date=date(2026, 10, 13),
+                amount=Decimal("200.00"),
+                note="Paycheck",
+                source=Transaction.Source.CSV,
+            ).count(),
+            1,
+        )
