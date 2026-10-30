@@ -13,7 +13,12 @@ from accounts.forms import RegistrationForm, ProfileForm
 
 class ProjectSetupTest(TestCase):
     def test_all_six_domain_models_are_available(self):
-        """TC-MNT-01: Verify all six required domain models exist."""
+        """Smoke check that all six domain models from SRS Appendix B exist.
+
+        Previously labelled TC-MNT-01. That test case is the maintainability
+        check in the Test Plan — app structure plus 70% coverage — and now
+        lives in tests_maintainability.py.
+        """
         required_models = [
             User,
             Category,

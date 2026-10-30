@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+
+{% block title %}Reports{% endblock %}
+
+{% block content %}
+<section class="page-head">
+    <h1>Reports</h1>
+</section>
+
+<form method="get" class="filter-bar">
+    {% if form.non_field_errors %}
+    <ul class="errors">
+        {% for error in form.non_field_errors %}<li>{{ error }}</li>{% endfor %}
+    </ul>
+    {% endif %}
+    {% for field in form %}
+    <span class="field-inline">
+        <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+        {{ field }}
+        {% for error in field.errors %}<span class="error">{{ error }}</span>{% endfor %}
+    </span>
+    {% endfor %}
+    <button type="submit">Apply</button>
+</form>
+
+<section class="report">
+    <h2>Spending by category</h2>
+    <p class="period">{{ start_date }} to {{ end_date }}</p>
+
+    {% if spending.rows %}
+    <table class="data-table">
+        <thead>
+            <tr><th>Category</th><th>Total</th><th>Share</th></tr>
+        </thead>
+        <tbody>
+            {% for row in spending.rows %}
+            <tr>
+                <td>{{ row.category }}</td>
+                <td>{{ row.total }}</td>
+                <td>{{ row.percentage }}%</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+        <tfoot>
+            <tr><th>Total</th><th>{{ spending.total }}</th><th>100.0%</th></tr>
+        </tfoot>
+    </table>
+    {% else %}
+    <p class="empty">No spending recorded in this period. Total {{ spending.total }}.</p>
+    {% endif %}
+</section>
+
+<section class="report">
+    <h2>Budget adherence</h2>
+
+    {% if adherence %}
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Category</th><th>Period</th><th>Limit</th>
+                <th>Spent</th><th>Remaining</th><th>Used</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in adherence %}
+            <tr{% if row.over_limit %} class="over-limit"{% endif %}>
+                <td>{{ row.category }}</td>
+                <td>{{ row.period }}</td>
+                <td>{{ row.limit }}</td>
+                <td>{{ row.spent }}</td>
+                <td>{{ row.remaining }}</td>
+                <td>{{ row.percentage }}%</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p class="empty">No active budgets.</p>
+    {% endif %}
+</section>
+{% endblock %}
