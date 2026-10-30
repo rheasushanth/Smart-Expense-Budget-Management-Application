@@ -23,3 +23,18 @@ These were accepted deliberately during the dry run rather than treated as defec
 | Coverage threshold not enforced | The CI pipeline reports coverage but does not fail below a threshold. NFR-005 requires at least 70% line coverage on the budgets, recurring and transactions apps. | Sprint 2 (#31), once those apps carry real tests. |
 | Sample CSV fixtures incomplete | No row exercises the "up to 2 decimal places" rule, and no row pairs a category with a mismatched transaction type (the FR-007 case). | Sprint 2, when the CSV importer is built (FR-009 to FR-011). |
 | Admin path | `templates/base.html` links to `/admin/`, whereas Project Plan E.2 places Django's built-in admin at `/django-admin/`, restricted to superusers, with FR-020 to FR-022 delivered by team-built views in the categories app. | Sprint 2, with the admin and category management work. |
+# Deviations and Known Limitations
+
+## FR-011 — Duplicate CSV Transaction Detection
+
+**Reference:** SRS Appendix B.8
+
+**Specified behaviour:** During CSV import, transactions are considered duplicates when their date, amount, and note match an existing transaction or a previously imported row in the same CSV file.
+
+**Known limitation:** The duplicate-matching key does not include the transaction category. Consequently, two legitimate transactions with the same date, amount, and note may be treated as duplicates even if they belong to different categories.
+
+**Example:** A Food expense and a Travel expense, both for ₹100 on the same date with an empty note, may cause the second transaction to be skipped.
+
+**Impact:** Legitimate transactions may be omitted during CSV import when they differ only by category.
+
+**Follow-up action:** Clarify with the SRS owner whether category should be included in the duplicate-matching key. Until clarified, retain the behaviour specified in Appendix B.8.
