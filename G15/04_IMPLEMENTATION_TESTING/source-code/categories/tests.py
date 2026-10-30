@@ -123,6 +123,7 @@ class CategoryManagementTest(TestCase):
                 response = self.client.get(url)
                 self.assertEqual(response.status_code, 403)
 
+
 class DisabledCategoryAssignmentTest(TestCase):
     """TC-ADM-02: Disabled categories cannot be assigned to new records."""
 
@@ -202,35 +203,55 @@ class DisabledCategoryAssignmentTest(TestCase):
             ).exists()
         )
 
+
 class RegisteredUsersAdminTest(TestCase):
-    """TC-ADM-03: Administrator can view registered users."""
+    """TC-ADM-03: Only Administrators can view registered users."""
 
     @classmethod
     def setUpTestData(cls):
         User = get_user_model()
 
-        cls.admin_user = User.objects.create_superuser(
+        # Application Administrator, not a Django superuser.
+        cls.admin_user = User.objects.create_user(
             email="fr022-admin@example.com",
             password="TestPassword123!",
             name="FR022 Administrator",
+            role="Administrator",
+            is_staff=False,
+            is_superuser=False,
         )
 
-        cls.registered_user = User.objects.create_user(
+        cls.customer_user = User.objects.create_user(
             email="fr022-customer@example.com",
             password="TestPassword123!",
             name="FR022 Registered Customer",
             role="Customer",
+            is_staff=False,
+            is_superuser=False,
         )
-
-    def setUp(self):
-        self.client.force_login(self.admin_user)
 
     def test_administrator_can_view_registered_users(self):
-        response = self.client.get(
-            reverse("admin:accounts_user_changelist")
-        )
+        self.client.force_login(self.admin_user)
+
+        response = self.client.get(reverse("categories:user_list"))
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "FR022 Registered Customer")
         self.assertContains(response, "fr022-customer@example.com")
         self.assertContains(response, "FR022 Administrator")
+
+    def test_customer_cannot_view_registered_users(self):
+        self.client.force_login(self.customer_user)
+
+        response = self.client.get(reverse("categories:user_list"))
+
+        self.assertEqual(response.status_code, 403)
+
+    def test_password_hashes_are_not_exposed(self):
+        self.client.force_login(self.admin_user)
+
+        response = self.client.get(reverse("categories:user_list"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertNotContains(response, self.admin_user.password)
+        self.assertNotContains(response, self.customer_user.password)
