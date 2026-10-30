@@ -107,3 +107,12 @@ body {
         padding: 28px 22px;
     }
 }
+.success-message {
+    background: #e8f7ee;
+    color: #176b3a;
+    border: 1px solid #b7e4c7;
+    padding: 14px 18px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    font-size: 15px;
+}
