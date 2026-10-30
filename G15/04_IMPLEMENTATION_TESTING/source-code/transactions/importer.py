@@ -94,10 +94,8 @@ def import_transactions(file, user):
                 signature = (
                     parsed_date.isoformat(),
                     amount.quantize(Decimal("0.01")),
-                    raw_type,
-                    category.category_id,
                     note,
-                )
+                )   
 
                 if signature in seen_in_file:
                     errors.append({
@@ -105,18 +103,20 @@ def import_transactions(file, user):
                         "reason": "Duplicate transaction row in this CSV file.",
                     })
                     continue
-                seen_in_file.add(signature)
+                
 
                 duplicate_exists = Transaction.objects.filter(
                     user=user,
                     date=parsed_date,
                     amount=amount,
-                    type=raw_type,
-                    category=category,
                     note=note,
                 ).exists()
 
                 if duplicate_exists:
+                    errors.append({
+                        "row": row_number,
+                        "reason": "Duplicate transaction already exists.",
+                    })
                     continue
 
                 with db_transaction.atomic():
@@ -130,7 +130,8 @@ def import_transactions(file, user):
                         source=Transaction.Source.CSV,
                     )
 
-                imported += 1
+                seen_in_file.add(signature)
+                imported +=1
 
             except (ValueError, InvalidOperation, TypeError) as exc:
                 errors.append({"row": row_number, "reason": str(exc)})
