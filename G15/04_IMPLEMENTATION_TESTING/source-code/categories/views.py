@@ -1,9 +1,13 @@
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_http_methods
+from django.contrib.auth import get_user_model
 
 from accounts.permissions import role_required
 from .forms import CategoryForm
 from .models import Category
+
+
+User = get_user_model()
 
 
 @role_required("admin")
@@ -67,3 +71,15 @@ def category_enable(request, category_id):
     category.is_active = True
     category.save(update_fields=["is_active"])
     return redirect("categories:list")
+
+
+# FR-022: Allow administrators to view registered users.
+@role_required("admin")
+def user_list(request):
+    users = User.objects.all().order_by("name", "email")
+
+    return render(
+        request,
+        "categories/user_list.html",
+        {"users": users},
+    )

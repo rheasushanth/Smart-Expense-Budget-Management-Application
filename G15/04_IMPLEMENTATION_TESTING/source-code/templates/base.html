@@ -17,11 +17,26 @@
 
         <nav aria-label="Main navigation">
             <a href="{% url 'home' %}">Home</a>
-            <a href="/admin/">Administration</a>
+
+            {% if user.is_authenticated %}
+                <a href="{% url 'record_expense' %}">Record Expense</a>
+                <a href="{% url 'record_income' %}">Record Income</a>
+                <a href="{% url 'profile' %}">Profile</a>
+            {% else %}
+                <a href="{% url 'login' %}">Login</a>
+                <a href="{% url 'register' %}">Register</a>
+            {% endif %}
         </nav>
     </header>
 
     <main class="container">
+        {% if messages %}
+            {% for message in messages %}
+                <div class="success-message" role="status">
+                    {{ message }}
+                </div>
+            {% endfor %}
+        {% endif %}
         {% block content %}
         <section class="welcome-card">
             <p class="eyebrow">PERSONAL FINANCE</p>

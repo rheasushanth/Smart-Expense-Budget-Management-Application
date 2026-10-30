@@ -140,11 +140,52 @@ class RecordExpenseTests(TestCase):
         })
 
         self.assertEqual(response.status_code, 200)
-        self.assertFalse(Transaction.objects.filter(
-            user=self.user,
-            category=income_category,
-            type=Transaction.TransactionType.EXPENSE,
-        ).exists())
+        self.assertFalse(
+            Transaction.objects.filter(
+                user=self.user,
+                category=income_category,
+                type=Transaction.TransactionType.EXPENSE,
+            ).exists()
+        )
+
+    def test_TC_USA_01_user_can_record_expense_with_clear_confirmation(self):
+        # Step 1: User opens the home page.
+        home_response = self.client.get(reverse("home"))
+        self.assertEqual(home_response.status_code, 200)
+        self.assertContains(home_response, "Record Expense")
+
+        # Step 2: User opens the expense form.
+        expense_response = self.client.get(reverse("record_expense"))
+        self.assertEqual(expense_response.status_code, 200)
+        self.assertContains(expense_response, "Amount")
+        self.assertContains(expense_response, "Category")
+        self.assertContains(expense_response, "Date")
+        self.assertContains(expense_response, "Note (Optional)")
+
+        # Step 3: User submits an expense and receives confirmation.
+        response = self.client.post(
+            reverse("record_expense"),
+            {
+                "amount": "250.00",
+                "category": self.category.pk,
+                "date": date.today().isoformat(),
+                "note": "Usability test expense",
+            },
+            follow=True,
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Expense recorded successfully!")
+
+        # Verify that the expense was saved.
+        self.assertTrue(
+            Transaction.objects.filter(
+                user=self.user,
+                amount=Decimal("250.00"),
+                note="Usability test expense",
+                type=Transaction.TransactionType.EXPENSE,
+            ).exists()
+        )
 
 class CategoryValidationTests(TestCase):
     def setUp(self):

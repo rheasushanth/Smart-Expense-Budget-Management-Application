@@ -1,6 +1,7 @@
 from django.conf import settings
 from django.db import models
 from django.utils import timezone
+from django.core.exceptions import ValidationError
 
 
 class Transaction(models.Model):
@@ -44,5 +45,12 @@ class Transaction(models.Model):
         blank=True,
         related_name="transactions",
     )
+    def save(self, *args, **kwargs):
+        # FR-021: prevent disabled categories from being assigned
+        # to new transactions.
+        if self._state.adding and self.category_id:
+            self.category.validate_active()
+
+        super().save(*args, **kwargs)
     def __str__(self):
         return f"{self.type}: {self.amount} on {self.date}"

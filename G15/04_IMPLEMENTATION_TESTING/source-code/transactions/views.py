@@ -1,7 +1,7 @@
 
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import get_object_or_404, redirect, render
-
+from django.contrib import messages
 from .forms import CSVUploadForm, ExpenseForm, IncomeForm
 from .importer import import_transactions
 from .models import Transaction
@@ -38,6 +38,11 @@ def record_expense(request):
             transaction.type = "Expense"
             transaction.source = "Manual"
             transaction.save()
+
+            messages.success(
+                request,
+                "Expense recorded successfully!"
+            )
             return redirect("record_expense")
     else:
         form = ExpenseForm()
@@ -47,6 +52,7 @@ def record_expense(request):
         "transactions/record_expense.html",
         {"form": form},
     )
+
 
 
 @login_required

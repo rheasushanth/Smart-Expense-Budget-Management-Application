@@ -1,5 +1,6 @@
 from datetime import date
 from decimal import Decimal
+from unittest.mock import patch
 
 from django.core.exceptions import ValidationError
 from django.test import TestCase
@@ -10,7 +11,15 @@ from categories.models import Category
 from transactions.models import Transaction
 
 from .models import Alert, Budget
-from .services import percentage_used, remaining_for, spend_for
+from .services import (
+    budget_status,
+    percentage_used,
+    remaining_for,
+    spend_for,
+    threshold_amount,
+)
+
+from .alerts import evaluate, evaluate_budget
 
 
 class BudgetTestData(TestCase):
@@ -515,3 +524,58 @@ class AlertNotification(BudgetTestData):
         self.assertEqual(response.status_code, 404)
         alert.refresh_from_db()
         self.assertFalse(alert.is_read)
+
+
+class NFR006ServiceTestability(BudgetTestData):
+    """TC-TST-01: Core services can be tested without HTTP or external APIs."""
+
+    def setUp(self):
+        self.budget = self.make_budget(start_date=date(2026, 10, 1))
+        self.budget.threshold_pct = 80
+        self.budget.full_clean()
+        self.budget.save()
+
+    def create_expense_without_signal(self, amount):
+        """Create an expense without triggering automatic alert evaluation."""
+        with patch("budgets.signals.evaluate"):
+            return Transaction.objects.create(
+                user=self.user,
+                category=self.food,
+                amount=Decimal(amount),
+                type=Transaction.TransactionType.EXPENSE,
+                date=date(2026, 10, 5),
+                note="",
+            )
+
+    def test_budget_status_service_directly(self):
+        self.create_expense_without_signal("4000.00")
+
+        status = budget_status(self.budget)
+
+        self.assertEqual(status["spent"], Decimal("4000.00"))
+        self.assertEqual(status["remaining"], Decimal("1000.00"))
+        self.assertEqual(status["percentage"], Decimal("80.0"))
+        self.assertFalse(status["over_limit"])
+        self.assertTrue(status["at_threshold"])
+
+    def test_evaluate_budget_service_directly(self):
+        self.create_expense_without_signal("5001.00")
+
+        created_alerts = evaluate_budget(self.budget)
+
+        self.assertEqual(len(created_alerts), 2)
+        self.assertSetEqual(
+            {alert.kind for alert in created_alerts},
+            {Alert.Kind.THRESHOLD, Alert.Kind.LIMIT},
+        )
+
+    def test_evaluate_service_directly(self):
+        self.create_expense_without_signal("5001.00")
+
+        created_alerts = evaluate(
+            self.user,
+            self.food,
+            date(2026, 10, 5),
+        )
+
+        self.assertEqual(len(created_alerts), 2)

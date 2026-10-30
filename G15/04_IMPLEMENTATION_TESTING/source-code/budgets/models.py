@@ -56,8 +56,11 @@ class Budget(models.Model):
 
         last_day_of_next = calendar.monthrange(next_year, next_month)[1]
         if self.start_date.day <= last_day_of_next:
-            same_day_next_month = date(next_year, next_month, self.start_date.day)
+            same_day_next_month = date(
+                next_year, next_month, self.start_date.day
+            )
             return same_day_next_month - timedelta(days=1)
+
         return date(next_year, next_month, last_day_of_next)
 
     def overlaps(self, other):
@@ -80,12 +83,20 @@ class Budget(models.Model):
                 {"category": "A budget can only be set on an Expense category."}
             )
 
-        if not (self.user_id and self.category_id and self.start_date and self.period):
+        if not (
+            self.user_id
+            and self.category_id
+            and self.start_date
+            and self.period
+        ):
             # Not enough information yet to run the overlap check; the field
             # validators have already reported the missing values.
             return
 
-        clashing = Budget.objects.filter(user=self.user, category=self.category)
+        clashing = Budget.objects.filter(
+            user=self.user,
+            category=self.category,
+        )
         if self.pk:
             clashing = clashing.exclude(pk=self.pk)
 
@@ -100,6 +111,13 @@ class Budget(models.Model):
                         )
                     }
                 )
+
+    def save(self, *args, **kwargs):
+        """Prevent assigning a disabled category to a new budget (FR-021)."""
+        if self._state.adding and self.category_id:
+            self.category.validate_active()
+
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return f"{self.category.name} - {self.period}"
