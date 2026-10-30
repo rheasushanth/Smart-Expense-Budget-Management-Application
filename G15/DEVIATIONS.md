@@ -12,29 +12,17 @@ definition of done stated on an issue, together with the reason and the resoluti
 | D-02 | 2026-10-14 | TASK-02 (#2, PR #43) | Issue definition of done states "reviewed and merged by the repo owner", but the assignee and the repo owner are the same person. | GitHub does not permit a pull request author to approve their own pull request, so the stated rule is not satisfiable for issues assigned to the repo owner. | Reviewed and approved by Sarthki Vachhani, merged by the repo owner. The wording is to be corrected on remaining issues to "reviewed by another team member, merged by the repo owner". |
 | D-03 | 2026-10-14 | Repository history | One commit message on `main` was rewritten after it had been pushed, and `main` was force-pushed. | The commit carried an unwanted co-author trailer. | `git filter-branch` removed the trailer; branch protection was lifted only for the duration of the push and re-enabled immediately. Both team members reset their local `main`. Pull requests #41 and #43 therefore reference merge-commit SHAs that are no longer on `main`; the pull requests themselves remain merged and their CI runs remain green. |
 
-## Known gaps carried into Sprint 1
+## Known gaps
 
-These were accepted deliberately during the dry run rather than treated as defects.
+Accepted deliberately rather than treated as defects. Resolved rows are kept with their
+closing note, so the log reads as a history rather than only a to-do list.
 
-| Item | Detail | Planned resolution |
+| Item | Detail | Status |
 | --- | --- | --- |
-| Validation constraints absent | `Transaction.amount`, `Budget.limit_amount` and `RecurringRule.amount` are not constrained to be greater than zero, and `Budget.threshold_pct` is not constrained to the documented 1–100 range (SRS Appendix B.2, B.3). | Sprint 1, alongside the budget and transaction forms. |
-| Seed accounts cannot authenticate | `seed_demo` calls `set_unusable_password()`, so the three demo users have no usable password. | Sprint 1, with the authentication work (FR-001 to FR-004). |
-| Coverage threshold not enforced | The CI pipeline reports coverage but does not fail below a threshold. NFR-005 requires at least 70% line coverage on the budgets, recurring and transactions apps. | Sprint 2 (#31), once those apps carry real tests. |
-| Sample CSV fixtures incomplete | No row exercises the "up to 2 decimal places" rule, and no row pairs a category with a mismatched transaction type (the FR-007 case). | Sprint 2, when the CSV importer is built (FR-009 to FR-011). |
-| Admin path | `templates/base.html` links to `/admin/`, whereas Project Plan E.2 places Django's built-in admin at `/django-admin/`, restricted to superusers, with FR-020 to FR-022 delivered by team-built views in the categories app. | Sprint 2, with the admin and category management work. |
-# Deviations and Known Limitations
-
-## FR-011 — Duplicate CSV Transaction Detection
-
-**Reference:** SRS Appendix B.8
-
-**Specified behaviour:** During CSV import, transactions are considered duplicates when their date, amount, and note match an existing transaction or a previously imported row in the same CSV file.
-
-**Known limitation:** The duplicate-matching key does not include the transaction category. Consequently, two legitimate transactions with the same date, amount, and note may be treated as duplicates even if they belong to different categories.
-
-**Example:** A Food expense and a Travel expense, both for ₹100 on the same date with an empty note, may cause the second transaction to be skipped.
-
-**Impact:** Legitimate transactions may be omitted during CSV import when they differ only by category.
-
-**Follow-up action:** Clarify with the SRS owner whether category should be included in the duplicate-matching key. Until clarified, retain the behaviour specified in Appendix B.8.
+| Coverage threshold not enforced | The CI pipeline reported coverage but did not fail below a threshold. NFR-005 requires at least 70% line coverage on the budgets, recurring and transactions apps. | **Resolved** — Sprint 2 (#31, PR #58). `ci.yml` now runs a dedicated step with `--cov-fail-under=70` scoped to those three apps. Verified to fail when the threshold is raised above actual coverage, so the gate is known to bite rather than merely to be present. Coverage at the time of closing: 97.8%. |
+| Validation constraints absent | `Transaction.amount`, `Budget.limit_amount` and `RecurringRule.amount` were not constrained to be greater than zero, and `Budget.threshold_pct` not to the documented 1–100 range (SRS Appendix B.2, B.3). | **Mostly resolved** — Sprint 1. `Budget.limit_amount`, `Budget.threshold_pct` and `RecurringRule.amount` now carry model validators. `Transaction.amount` is still validated only in the entry forms, not on the model, so a direct `objects.create()` can store a non-positive amount. To be closed with FR-010/FR-011 work. |
+| Seed accounts cannot authenticate | `seed_demo` calls `set_unusable_password()`, so the three demo users have no usable password. | **Open.** Registration (FR-001) now exists, so a demo account can be created through the UI, but the seeded users remain unusable for a scripted demo. |
+| Sample CSV fixtures incomplete | No row exercises the "up to 2 decimal places" rule, and no row pairs a category with a mismatched transaction type (the FR-007 case). | **Open** — to be extended alongside FR-011 (#13). |
+| Admin path | `templates/base.html` links to `/admin/`, whereas Project Plan E.2 places Django's built-in admin at `/django-admin/`, restricted to superusers. | **Partly resolved** — FR-020 is now served by role-protected views in the categories app (#22, PR #56), as the Project Plan requires. Django's built-in admin is still mounted at `/admin/` rather than `/django-admin/`, and `base.html` still links to it. |
+| Navigation links absent | `base.html` links only to Home and Administration. Budgets, transactions, recurring rules and categories are reachable only by typing their URLs. | **Open** — the features work but the application cannot be navigated by clicking. Worth folding into the FR-018 dashboard work (#20). |
+| CSV duplicate rule can drop legitimate rows | SRS Appendix B.8 matches duplicates on date, amount and note only. Two transactions that differ solely by category — a 100.00 Food expense and a 100.00 Travel expense on the same day with an empty note — collide, and the second is skipped. Verified: such an import reports `imported=1 errors=1`. | **Open, by design** — FR-011 (#13, PR #60) implements the rule as specified. Raised with the SRS owner to confirm whether category belongs in the matching key; the documented behaviour is retained until that is settled. |
