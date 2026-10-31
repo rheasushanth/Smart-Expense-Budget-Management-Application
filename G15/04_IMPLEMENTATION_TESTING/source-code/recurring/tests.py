@@ -9,6 +9,7 @@ from accounts.models import User
 from categories.models import Category
 
 from .models import RecurringRule
+from .tasks import generate_due_transactions, get_next_run_date
 
 
 class RecurringTestData(TestCase):
@@ -238,3 +239,114 @@ class RecurringRuleListing(RecurringTestData):
         self.assertEqual(response.status_code, 200)
         rule.refresh_from_db()
         self.assertTrue(rule.is_active)
+
+class TCREC02AutomaticGeneration(RecurringTestData):
+    """TC-REC-02 (FR-024): automatic recurring transaction generation."""
+
+    def create_rule(self, **overrides):
+        rule = self.make_rule(**overrides)
+        rule.full_clean()
+        rule.save()
+        return rule
+
+    def test_no_transaction_before_due_date(self):
+        rule = self.create_rule()
+
+        result = generate_due_transactions(
+            run_date=rule.next_run_date - timedelta(days=1)
+        )
+
+        self.assertEqual(result["created"], 0)
+        self.assertEqual(rule.transactions.count(), 0)
+
+    def test_due_rule_generates_one_recurring_transaction(self):
+        rule = self.create_rule()
+
+        result = generate_due_transactions(run_date=rule.next_run_date)
+
+        self.assertEqual(result["created"], 1)
+
+        transaction = rule.transactions.get()
+        self.assertEqual(transaction.source, "Recurring")
+        self.assertEqual(transaction.amount, Decimal("999.00"))
+        self.assertEqual(transaction.type, "Expense")
+        self.assertEqual(transaction.date, self.tomorrow)
+
+        rule.refresh_from_db()
+        self.assertEqual(
+            rule.next_run_date,
+            get_next_run_date(self.tomorrow, RecurringRule.Frequency.MONTHLY),
+        )
+
+    def test_running_twice_does_not_create_duplicates(self):
+        rule = self.create_rule()
+
+        first_result = generate_due_transactions(run_date=self.tomorrow)
+        second_result = generate_due_transactions(run_date=self.tomorrow)
+
+        self.assertEqual(first_result["created"], 1)
+        self.assertEqual(second_result["created"], 0)
+        self.assertEqual(rule.transactions.count(), 1)
+
+    def test_deactivated_rule_does_not_generate_transaction(self):
+        rule = self.create_rule()
+        rule.deactivate()
+
+        result = generate_due_transactions(run_date=self.tomorrow)
+
+        self.assertEqual(result["created"], 0)
+        self.assertEqual(rule.transactions.count(), 0)
+
+    def test_disabled_category_is_skipped_and_flagged(self):
+        rule = self.create_rule()
+
+        self.subscriptions.is_active = False
+        self.subscriptions.save(update_fields=["is_active"])
+
+        result = generate_due_transactions(run_date=self.tomorrow)
+
+        self.assertEqual(result["created"], 0)
+        self.assertEqual(result["skipped"], 1)
+        self.assertEqual(rule.transactions.count(), 0)
+
+        rule.refresh_from_db()
+        self.assertTrue(rule.category_disabled)
+
+        response = self.client.get(reverse("rule_list"))
+        self.assertContains(response, "Category disabled")
+
+    def test_other_active_rules_process_when_one_category_is_disabled(self):
+        disabled_rule = self.create_rule()
+
+        active_rule = self.create_rule(
+            category=self.salary,
+            amount=Decimal("2000.00"),
+        )
+
+        self.subscriptions.is_active = False
+        self.subscriptions.save(update_fields=["is_active"])
+
+        result = generate_due_transactions(run_date=self.tomorrow)
+
+        self.assertEqual(result["created"], 1)
+        self.assertEqual(result["skipped"], 1)
+        self.assertEqual(disabled_rule.transactions.count(), 0)
+        self.assertEqual(active_rule.transactions.count(), 1)
+
+        generated = active_rule.transactions.get()
+        self.assertEqual(generated.type, "Income")
+        self.assertEqual(generated.source, "Recurring")
+
+    def test_weekly_rule_advances_by_seven_days(self):
+        rule = self.create_rule(
+            frequency=RecurringRule.Frequency.WEEKLY
+        )
+
+        generate_due_transactions(run_date=self.tomorrow)
+
+        rule.refresh_from_db()
+        self.assertEqual(
+            rule.next_run_date,
+            self.tomorrow + timedelta(days=7),
+        )
+        self.assertEqual(rule.transactions.count(), 1)
