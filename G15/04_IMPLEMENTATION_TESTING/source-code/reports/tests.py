@@ -9,7 +9,15 @@ from budgets.models import Budget
 from categories.models import Category
 from transactions.models import Transaction
 
-from .queries import budget_adherence, category_report, month_bounds
+from .queries import (
+    InvalidPeriod,
+    UnknownChartKind,
+    budget_adherence,
+    category_report,
+    chart_data,
+    month_bounds,
+    spend_over_time,
+)
 
 
 class ReportTestData(TestCase):
@@ -250,5 +258,261 @@ class ReportPage(ReportTestData):
     def test_page_requires_login(self):
         self.client.logout()
         response = self.client.get(reverse("report"))
+        self.assertEqual(response.status_code, 302)
+        self.assertIn("/accounts/login/", response.headers["Location"])
+
+
+class TCRPT02ChartData(ReportTestData):
+    """TC-RPT-02, the figures: every chart comes from the report's data."""
+
+    def test_pie_matches_the_category_report(self):
+        self.seed_the_month()
+
+        data = chart_data(self.user, "pie", self.start, self.end)
+
+        self.assertEqual(data["kind"], "pie")
+        self.assertEqual(data["labels"], ["Rent", "Food", "Travel"])
+        self.assertEqual(data["values"], [3000.00, 1000.00, 1000.00])
+        self.assertEqual(data["total"], 5000.00)
+
+    def test_bar_carries_the_same_figures_as_the_pie(self):
+        self.seed_the_month()
+
+        pie = chart_data(self.user, "pie", self.start, self.end)
+        bar = chart_data(self.user, "bar", self.start, self.end)
+
+        self.assertEqual(bar["labels"], pie["labels"])
+        self.assertEqual(bar["values"], pie["values"])
+
+    def test_chart_total_matches_the_report_total(self):
+        self.seed_the_month()
+
+        report = category_report(self.user, self.start, self.end)
+        for kind in ("pie", "bar", "line"):
+            with self.subTest(kind=kind):
+                data = chart_data(self.user, kind, self.start, self.end)
+                self.assertEqual(
+                    Decimal(str(data["total"])).quantize(Decimal("0.01")),
+                    report["total"],
+                )
+
+    def test_line_plots_one_point_per_day_of_the_period(self):
+        self.seed_the_month()
+
+        data = chart_data(self.user, "line", self.start, self.end)
+
+        expected_days = (self.end - self.start).days + 1
+        self.assertEqual(len(data["labels"]), expected_days)
+        self.assertEqual(len(data["values"]), expected_days)
+        self.assertEqual(data["labels"][0], self.start.isoformat())
+        # All three seeded transactions fall on the first day of the month.
+        self.assertEqual(data["values"][0], 5000.00)
+
+    def test_line_fills_days_without_spending_with_zero(self):
+        self.spend(self.food, "1000.00", when=date(2024, 3, 1))
+        self.spend(self.rent, "500.00", when=date(2024, 3, 3))
+
+        data = chart_data(
+            self.user, "line", date(2024, 3, 1), date(2024, 3, 3)
+        )
+
+        self.assertEqual(data["values"], [1000.00, 0.00, 500.00])
+
+    def test_line_can_be_grouped_by_week(self):
+        # 4 and 6 March 2024 share a week; 11 March starts the next one.
+        self.spend(self.food, "100.00", when=date(2024, 3, 4))
+        self.spend(self.food, "200.00", when=date(2024, 3, 6))
+        self.spend(self.rent, "700.00", when=date(2024, 3, 11))
+
+        data = chart_data(
+            self.user, "line", date(2024, 3, 4), date(2024, 3, 11), group="week"
+        )
+
+        self.assertEqual(data["labels"], ["2024-03-04", "2024-03-11"])
+        self.assertEqual(data["values"], [300.00, 700.00])
+
+    def test_empty_period_returns_no_points_without_error(self):
+        for kind in ("pie", "bar"):
+            with self.subTest(kind=kind):
+                data = chart_data(self.user, kind, self.start, self.end)
+                self.assertEqual(data["labels"], [])
+                self.assertEqual(data["total"], 0.00)
+
+    def test_another_users_spend_is_not_charted(self):
+        self.seed_the_month()
+        other = User.objects.create_user(
+            email="bob@test.com", password="Str0ng#Pass1", name="Bob"
+        )
+        self.spend(self.food, "9999.00", user=other)
+
+        data = chart_data(self.user, "pie", self.start, self.end)
+        self.assertEqual(data["total"], 5000.00)
+
+    def test_income_is_not_charted(self):
+        self.seed_the_month()
+        Transaction.objects.create(
+            user=self.user,
+            category=self.salary,
+            amount=Decimal("20000.00"),
+            type=Transaction.TransactionType.INCOME,
+            date=self.start,
+            note="",
+        )
+
+        for kind in ("pie", "bar", "line"):
+            with self.subTest(kind=kind):
+                data = chart_data(self.user, kind, self.start, self.end)
+                self.assertEqual(data["total"], 5000.00)
+
+    def test_unknown_kind_is_rejected(self):
+        with self.assertRaises(UnknownChartKind):
+            chart_data(self.user, "donut", self.start, self.end)
+
+    def test_start_after_end_is_rejected(self):
+        with self.assertRaises(InvalidPeriod):
+            chart_data(self.user, "pie", date(2024, 3, 31), date(2024, 3, 1))
+
+    def test_spend_over_time_defaults_an_unknown_grouping_to_days(self):
+        self.spend(self.food, "100.00", when=date(2024, 3, 1))
+
+        buckets = spend_over_time(
+            self.user, date(2024, 3, 1), date(2024, 3, 2), group="fortnight"
+        )
+
+        self.assertEqual(
+            buckets, [(date(2024, 3, 1), Decimal("100.00")), (date(2024, 3, 2), Decimal("0.00"))]
+        )
+
+
+class TCRPT02DashboardPage(ReportTestData):
+    """TC-RPT-02, the page: the dashboard renders all three canvases."""
+
+    def setUp(self):
+        self.client.force_login(self.user)
+
+    def test_dashboard_renders_pie_bar_and_line_canvases(self):
+        self.seed_the_month()
+
+        response = self.client.get(reverse("dashboard"))
+
+        self.assertEqual(response.status_code, 200)
+        for kind in ("pie", "bar", "line"):
+            with self.subTest(kind=kind):
+                self.assertContains(response, f'id="chart-{kind}"')
+
+    def test_dashboard_renders_without_data(self):
+        response = self.client.get(reverse("dashboard"))
+        self.assertEqual(response.status_code, 200)
+
+    def test_dashboard_defaults_to_the_current_month(self):
+        response = self.client.get(reverse("dashboard"))
+        self.assertEqual(response.context["start_date"], self.start)
+        self.assertEqual(response.context["end_date"], self.end)
+
+    def test_dashboard_period_can_be_chosen(self):
+        response = self.client.get(
+            reverse("dashboard"),
+            {"start_date": "2024-03-01", "end_date": "2024-03-31"},
+        )
+        self.assertEqual(response.context["start_date"], date(2024, 3, 1))
+        self.assertEqual(response.context["group"], "day")
+
+    def test_long_periods_are_grouped_by_week(self):
+        response = self.client.get(
+            reverse("dashboard"),
+            {"start_date": "2024-01-01", "end_date": "2024-12-31"},
+        )
+        self.assertEqual(response.context["group"], "week")
+
+    def test_dashboard_start_after_end_is_rejected(self):
+        response = self.client.get(
+            reverse("dashboard"),
+            {"start_date": "2024-03-31", "end_date": "2024-03-01"},
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "must not be after")
+
+    def test_dashboard_requires_login(self):
+        self.client.logout()
+        response = self.client.get(reverse("dashboard"))
+        self.assertEqual(response.status_code, 302)
+        self.assertIn("/accounts/login/", response.headers["Location"])
+
+
+class TCRPT02ChartDataEndpoint(ReportTestData):
+    """TC-RPT-02, the endpoint the three charts fetch (SAD v1.1 Section 4.3)."""
+
+    def setUp(self):
+        self.client.force_login(self.user)
+
+    def get(self, **params):
+        return self.client.get(reverse("chart_data"), params)
+
+    def test_payload_shape_matches_the_report_api(self):
+        self.seed_the_month()
+
+        response = self.get(
+            kind="pie",
+            **{"from": self.start.isoformat(), "to": self.end.isoformat()},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response["Content-Type"], "application/json")
+        payload = response.json()
+        self.assertEqual(
+            sorted(payload.keys()), ["kind", "labels", "total", "values"]
+        )
+        self.assertEqual(payload["labels"], ["Rent", "Food", "Travel"])
+        self.assertEqual(payload["values"], [3000.00, 1000.00, 1000.00])
+        self.assertEqual(payload["total"], 5000.00)
+
+    def test_every_kind_is_served(self):
+        self.seed_the_month()
+        for kind in ("pie", "bar", "line"):
+            with self.subTest(kind=kind):
+                response = self.get(kind=kind)
+                self.assertEqual(response.status_code, 200)
+                self.assertEqual(response.json()["kind"], kind)
+
+    def test_period_defaults_to_the_current_month(self):
+        self.seed_the_month()
+        self.spend(self.food, "777.00", when=date(2020, 1, 15))
+
+        self.assertEqual(self.get(kind="pie").json()["total"], 5000.00)
+
+    def test_unknown_kind_is_a_400(self):
+        response = self.get(kind="donut")
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("Unknown chart kind", response.json()["error"])
+
+    def test_unknown_grouping_is_a_400(self):
+        response = self.get(kind="line", group="fortnight")
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("Unknown grouping", response.json()["error"])
+
+    def test_start_after_end_is_a_422(self):
+        response = self.get(
+            kind="pie", **{"from": "2024-03-31", "to": "2024-03-01"}
+        )
+        self.assertEqual(response.status_code, 422)
+        self.assertIn("must not be after", response.json()["error"])
+
+    def test_unparseable_date_is_a_422(self):
+        response = self.get(kind="pie", **{"from": "last-tuesday"})
+        self.assertEqual(response.status_code, 422)
+        self.assertIn("yyyy-mm-dd", response.json()["error"])
+
+    def test_another_users_data_is_never_returned(self):
+        self.seed_the_month()
+        other = User.objects.create_user(
+            email="bob@test.com", password="Str0ng#Pass1", name="Bob"
+        )
+        self.spend(self.food, "9999.00", user=other)
+
+        self.assertEqual(self.get(kind="pie").json()["total"], 5000.00)
+
+    def test_endpoint_requires_login(self):
+        self.client.logout()
+        response = self.get(kind="pie")
         self.assertEqual(response.status_code, 302)
         self.assertIn("/accounts/login/", response.headers["Location"])

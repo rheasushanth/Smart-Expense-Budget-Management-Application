@@ -5,10 +5,11 @@ HTTP, and so NFR-001's query work has one place to live.
 """
 
 import calendar
-from datetime import date
+from datetime import date, timedelta
 from decimal import Decimal
 
 from django.db.models import Sum
+from django.db.models.functions import TruncDay, TruncWeek
 
 from budgets.models import Budget
 from budgets.services import percentage_used, remaining_for, spend_for
@@ -16,6 +17,17 @@ from transactions.models import Transaction
 
 TWO_PLACES = Decimal("0.01")
 ONE_PLACE = Decimal("0.1")
+
+CHART_KINDS = ("pie", "bar", "line")
+GROUPINGS = ("day", "week")
+
+
+class UnknownChartKind(ValueError):
+    """Raised when a chart kind outside CHART_KINDS is requested (FR-018)."""
+
+
+class InvalidPeriod(ValueError):
+    """Raised when the start date falls after the end date (FR-018)."""
 
 
 def month_bounds(on_date=None):
@@ -66,6 +78,78 @@ def category_report(user, start_date, end_date):
             row["percentage"] = Decimal("0.0")
 
     return {"rows": materialised, "total": grand_total}
+
+
+def spend_over_time(user, start_date, end_date, group="day"):
+    """Expense spend per day or per week across a period (FR-018).
+
+    Buckets with no spending are filled with zero, so the line chart shows a
+    continuous trend instead of joining across the gaps.
+    """
+    if group not in GROUPINGS:
+        group = "day"
+
+    truncate = TruncDay if group == "day" else TruncWeek
+    rows = (
+        Transaction.objects.filter(
+            user=user,
+            type=Transaction.TransactionType.EXPENSE,
+            date__gte=start_date,
+            date__lte=end_date,
+        )
+        .annotate(bucket=truncate("date"))
+        .values("bucket")
+        .annotate(total=Sum("amount"))
+    )
+    totals = {
+        row["bucket"]: (row["total"] or Decimal("0")).quantize(TWO_PLACES)
+        for row in rows
+    }
+
+    step = timedelta(days=1 if group == "day" else 7)
+    # Weeks are truncated to their Monday, so start the walk on the Monday of
+    # the first week to line up with the keys the database returned.
+    cursor = start_date
+    if group == "week":
+        cursor = start_date - timedelta(days=start_date.weekday())
+
+    buckets = []
+    while cursor <= end_date:
+        buckets.append((cursor, totals.get(cursor, Decimal("0.00"))))
+        cursor += step
+
+    return buckets
+
+
+def chart_data(user, kind, start_date, end_date, group="day"):
+    """Labels and values for one chart on the analytics dashboard (FR-018).
+
+    The pie and bar charts are the category totals of category_report(), so
+    the dashboard and the report in SAD v1.1 Section 4.5 cannot disagree. The
+    line chart is the same spend grouped by day or week instead of category.
+    """
+    if kind not in CHART_KINDS:
+        raise UnknownChartKind(kind)
+    if start_date > end_date:
+        raise InvalidPeriod((start_date, end_date))
+
+    if kind == "line":
+        buckets = spend_over_time(user, start_date, end_date, group)
+        labels = [bucket.isoformat() for bucket, _ in buckets]
+        values = [total for _, total in buckets]
+        total = sum(values, Decimal("0")).quantize(TWO_PLACES)
+    else:
+        report = category_report(user, start_date, end_date)
+        labels = [row["category"] for row in report["rows"]]
+        values = [row["total"] for row in report["rows"]]
+        total = report["total"]
+
+    return {
+        "kind": kind,
+        "labels": labels,
+        "values": [float(value) for value in values],
+        "total": float(total),
+    }
 
 
 def budget_adherence(user, on_date=None):
