@@ -1,0 +1,136 @@
+{% extends "base.html" %}
+
+{% block title %}Analytics Dashboard{% endblock %}
+
+{% block content %}
+<section class="page-head">
+    <h1>Analytics Dashboard</h1>
+    <p class="subtitle">Spending trends for the selected period.</p>
+</section>
+
+<form method="get" class="filter-bar">
+    {% if form.non_field_errors %}
+    <ul class="errors">
+        {% for error in form.non_field_errors %}<li>{{ error }}</li>{% endfor %}
+    </ul>
+    {% endif %}
+    {% for field in form %}
+    <span class="field-inline">
+        <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+        {{ field }}
+        {% for error in field.errors %}<span class="error">{{ error }}</span>{% endfor %}
+    </span>
+    {% endfor %}
+    <button type="submit">Apply</button>
+</form>
+
+<p class="period">{{ start_date }} to {{ end_date }}</p>
+
+<div class="chart-grid">
+    <section class="chart-card">
+        <h2>Share of spending by category</h2>
+        <canvas id="chart-pie" aria-label="Pie chart of spending by category" role="img"></canvas>
+        <p class="empty" id="empty-pie" hidden>No spending recorded in this period.</p>
+    </section>
+
+    <section class="chart-card">
+        <h2>Spending by category</h2>
+        <canvas id="chart-bar" aria-label="Bar chart of spending by category" role="img"></canvas>
+        <p class="empty" id="empty-bar" hidden>No spending recorded in this period.</p>
+    </section>
+
+    <section class="chart-card chart-card-wide">
+        <h2>Spending over time ({{ group }})</h2>
+        <canvas id="chart-line" aria-label="Line chart of spending over time" role="img"></canvas>
+        <p class="empty" id="empty-line" hidden>No spending recorded in this period.</p>
+    </section>
+</div>
+
+<p class="error" id="chart-error" hidden>The charts could not be loaded. Please try again.</p>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script>
+    (function () {
+        // FR-018: every chart reads the endpoint report_view also reports from,
+        // so the dashboard and the report table cannot disagree.
+        const endpoint = "{% url 'chart_data' %}";
+        const period = "from={{ start_date|date:'Y-m-d' }}&to={{ end_date|date:'Y-m-d' }}";
+        const group = "{{ group }}";
+        const palette = [
+            "#2f6f4e", "#c9792b", "#3f6ea8", "#8a4f8f",
+            "#b5474b", "#4b8f8a", "#7a6a3a", "#5a5f6b",
+        ];
+
+        function show(id) {
+            const element = document.getElementById(id);
+            if (element) { element.hidden = false; }
+        }
+
+        async function load(kind) {
+            const url = endpoint + "?kind=" + kind + "&" + period + "&group=" + group;
+            const response = await fetch(url, {
+                headers: { "X-Requested-With": "XMLHttpRequest" },
+            });
+            if (!response.ok) {
+                throw new Error("chart-data responded " + response.status);
+            }
+            return response.json();
+        }
+
+        function draw(kind, data) {
+            if (!data.labels.length) {
+                document.getElementById("chart-" + kind).hidden = true;
+                show("empty-" + kind);
+                return;
+            }
+
+            const colours = data.labels.map(function (_, index) {
+                return palette[index % palette.length];
+            });
+
+            new Chart(document.getElementById("chart-" + kind), {
+                type: kind,
+                data: {
+                    labels: data.labels,
+                    datasets: [{
+                        label: "Spent",
+                        data: data.values,
+                        backgroundColor: kind === "line" ? "rgba(47, 111, 78, 0.15)" : colours,
+                        borderColor: kind === "line" ? palette[0] : colours,
+                        borderWidth: kind === "line" ? 2 : 0,
+                        fill: kind === "line",
+                        tension: 0.25,
+                    }],
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: { display: kind === "pie" },
+                    },
+                    scales: kind === "pie" ? {} : {
+                        y: { beginAtZero: true },
+                    },
+                },
+            });
+        }
+
+        async function render() {
+            if (typeof Chart === "undefined") {
+                show("chart-error");
+                return;
+            }
+            try {
+                const kinds = ["pie", "bar", "line"];
+                const payloads = await Promise.all(kinds.map(load));
+                kinds.forEach(function (kind, index) {
+                    draw(kind, payloads[index]);
+                });
+            } catch (error) {
+                show("chart-error");
+            }
+        }
+
+        document.addEventListener("DOMContentLoaded", render);
+    })();
+</script>
+{% endblock %}
