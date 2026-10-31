@@ -31,6 +31,7 @@ class RecurringRule(models.Model):
     frequency = models.CharField(max_length=10, choices=Frequency.choices)
     next_run_date = models.DateField()
     is_active = models.BooleanField(default=True)
+    category_disabled = models.BooleanField(default=False)
 
     def clean(self):
         """A rule may only use an active category (SRS Appendix B.5, FR-021).
