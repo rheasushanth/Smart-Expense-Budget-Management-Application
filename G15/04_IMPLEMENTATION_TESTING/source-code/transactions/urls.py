@@ -8,4 +8,5 @@ urlpatterns = [
     path("<int:txn_id>/edit/", views.edit_transaction, name="edit_transaction"),
     path("<int:txn_id>/delete/", views.delete_transaction, name="delete_transaction"),
     path("import/", views.import_csv_transactions, name="import_transactions"),
+    path("sandbox-sync/", views.sync_sandbox_bank, name="sync_sandbox_bank"),
 ]

@@ -1,0 +1,45 @@
+
+{% extends "base.html" %}
+
+{% block title %}Sandbox Bank Sync{% endblock %}
+
+{% block content %}
+
+<section class="welcome-card">
+    <p class="eyebrow">BANK INTEGRATION</p>
+
+    <h1>Sandbox Bank Sync</h1>
+
+    <p class="subtitle">
+        Import sample transactions from the mock bank service
+        into your Smart Expense application.
+    </p>
+
+    <form method="POST">
+        {% csrf_token %}
+
+        <button type="submit">
+            Sync Bank Transactions
+        </button>
+    </form>
+</section>
+
+{% if synced %}
+<section class="welcome-card">
+    <h2>Sync Results</h2>
+
+    <p>Successfully imported: {{ imported }}</p>
+
+    <p>Duplicates skipped: {{ skipped }}</p>
+
+    {% if errors %}
+        <h3>Import Errors</h3>
+
+        {% for error in errors %}
+            <p>{{ error.reason }}</p>
+        {% endfor %}
+    {% endif %}
+</section>
+{% endif %}
+
+{% endblock %}

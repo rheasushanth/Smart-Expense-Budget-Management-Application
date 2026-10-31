@@ -21,6 +21,7 @@
             {% if user.is_authenticated %}
                 <a href="{% url 'record_expense' %}">Record Expense</a>
                 <a href="{% url 'record_income' %}">Record Income</a>
+                <a href="{% url 'sync_sandbox_bank' %}">Sandbox Bank Sync</a>
                 <a href="{% url 'profile' %}">Profile</a>
             {% else %}
                 <a href="{% url 'login' %}">Login</a>
