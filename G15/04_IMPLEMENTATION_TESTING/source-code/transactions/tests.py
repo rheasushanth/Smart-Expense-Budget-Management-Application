@@ -610,3 +610,188 @@ class CSVImportTests(TestCase):
             ).count(),
             1,
         )
+
+from unittest.mock import patch
+
+from transactions.models import SandboxTransactionImport
+from transactions.sandbox_adapter import SandboxAPIError
+
+
+class SandboxBankSyncTests(TestCase):
+
+    def setUp(self):
+        User = get_user_model()
+
+        self.user = User.objects.create_user(
+            email="sandbox@example.com",
+            password="TestPassword123!",
+            name="Sandbox Test User",
+        )
+
+        self.other_user = User.objects.create_user(
+            email="other@example.com",
+            password="TestPassword123!",
+            name="Other Test User",
+        )
+
+        self.food_category = Category.objects.create(
+            name="Food",
+            type=Category.CategoryType.EXPENSE,
+            is_active=True,
+            created_by=self.user,
+        )
+
+        self.salary_category = Category.objects.create(
+            name="Salary",
+            type=Category.CategoryType.INCOME,
+            is_active=True,
+            created_by=self.user,
+        )
+
+        self.client.login(
+            email="sandbox@example.com",
+            password="TestPassword123!",
+        )
+
+    def test_TC_TXN_06_successful_sandbox_import(self):
+        result = self._sync()
+
+        self.assertEqual(result["imported"], 3)
+        self.assertEqual(result["skipped"], 0)
+        self.assertEqual(result["errors"], [])
+
+        self.assertEqual(
+            Transaction.objects.filter(
+                user=self.user,
+                source=Transaction.Source.SANDBOX,
+            ).count(),
+            3,
+        )
+
+        self.assertEqual(
+            SandboxTransactionImport.objects.filter(
+                user=self.user,
+            ).count(),
+            3,
+        )
+
+    def test_duplicate_transactions_are_skipped(self):
+        first_result = self._sync()
+        second_result = self._sync()
+
+        self.assertEqual(first_result["imported"], 3)
+        self.assertEqual(second_result["imported"], 0)
+        self.assertEqual(second_result["skipped"], 3)
+
+        self.assertEqual(
+            Transaction.objects.filter(
+                user=self.user,
+                source=Transaction.Source.SANDBOX,
+            ).count(),
+            3,
+        )
+
+    def test_invalid_transaction_is_rejected(self):
+        invalid_transaction = {
+            "transaction_id": "INVALID-001",
+            "date": "2026-10-25",
+            "amount": "-500",
+            "type": "Expense",
+            "category": "Food",
+            "note": "Invalid amount",
+        }
+
+        with patch(
+            "transactions.sandbox_sync.fetch_bank_transactions",
+            return_value=[invalid_transaction],
+        ):
+            result = self._sync()
+
+        self.assertEqual(result["imported"], 0)
+        self.assertEqual(len(result["errors"]), 1)
+
+        self.assertEqual(
+            Transaction.objects.filter(user=self.user).count(),
+            0,
+        )
+
+    def test_missing_category_is_rejected(self):
+        transaction_data = {
+            "transaction_id": "BANK-MISSING-001",
+            "date": "2026-10-25",
+            "amount": "500.00",
+            "type": "Expense",
+            "category": "Unknown Category",
+            "note": "Test transaction",
+        }
+
+        with patch(
+            "transactions.sandbox_sync.fetch_bank_transactions",
+            return_value=[transaction_data],
+        ):
+            result = self._sync()
+
+        self.assertEqual(result["imported"], 0)
+        self.assertEqual(len(result["errors"]), 1)
+
+    def test_sandbox_api_failure_is_handled(self):
+        with patch(
+            "transactions.sandbox_sync.fetch_bank_transactions",
+            side_effect=SandboxAPIError("Sandbox service unavailable"),
+        ):
+            result = self._sync()
+
+        self.assertEqual(result["imported"], 0)
+        self.assertEqual(result["skipped"], 0)
+        self.assertEqual(len(result["errors"]), 1)
+
+        self.assertIn(
+            "Sandbox service unavailable",
+            result["errors"][0]["reason"],
+        )
+
+    def test_each_user_can_import_their_own_transactions(self):
+        first_result = self._sync()
+
+        second_result = self._sync(self.other_user)
+
+        self.assertEqual(first_result["imported"], 3)
+        self.assertEqual(second_result["imported"], 3)
+
+        self.assertEqual(
+            SandboxTransactionImport.objects.filter(
+                user=self.user,
+            ).count(),
+            3,
+        )
+
+        self.assertEqual(
+            SandboxTransactionImport.objects.filter(
+                user=self.other_user,
+            ).count(),
+            3,
+        )
+
+    def test_sandbox_sync_page_requires_login(self):
+        self.client.logout()
+
+        response = self.client.get(
+            reverse("sync_sandbox_bank")
+        )
+
+        self.assertEqual(response.status_code, 302)
+
+    def test_sync_page_displays_results(self):
+        response = self.client.post(
+            reverse("sync_sandbox_bank"),
+            follow=True,
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Sync Results")
+        self.assertContains(response, "Successfully imported")
+
+    def _sync(self, user=None):
+        from transactions.sandbox_sync import sync_sandbox_transactions
+
+        return sync_sandbox_transactions(user or self.user)

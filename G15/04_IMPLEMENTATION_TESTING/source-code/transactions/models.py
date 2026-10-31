@@ -54,3 +54,36 @@ class Transaction(models.Model):
         super().save(*args, **kwargs)
     def __str__(self):
         return f"{self.type}: {self.amount} on {self.date}"
+
+class SandboxTransactionImport(models.Model):
+    """
+    Tracks bank transaction IDs already imported for each user.
+    Prevents the same sandbox transaction from being imported twice.
+    """
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="sandbox_imports",
+    )
+
+    bank_transaction_id = models.CharField(max_length=100)
+
+    transaction = models.OneToOneField(
+        Transaction,
+        on_delete=models.CASCADE,
+        related_name="sandbox_import",
+    )
+
+    imported_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["user", "bank_transaction_id"],
+                name="unique_user_sandbox_bank_txn",
+            )
+        ]
+
+    def __str__(self):
+        return self.bank_transaction_id

@@ -5,7 +5,7 @@ from django.contrib import messages
 from .forms import CSVUploadForm, ExpenseForm, IncomeForm
 from .importer import import_transactions
 from .models import Transaction
-
+from .sandbox_sync import sync_sandbox_transactions
 
 @login_required
 def record_income(request):
@@ -143,4 +143,48 @@ def import_csv_transactions(request):
         request,
         "transactions/import_transactions.html",
         {"form": form},
+    )
+
+@login_required
+def sync_sandbox_bank(request):
+    if request.method == "POST":
+        result = sync_sandbox_transactions(request.user)
+
+        imported = result["imported"]
+        skipped = result["skipped"]
+        errors = result["errors"]
+
+        if imported:
+            messages.success(
+                request,
+                f"Successfully synced {imported} bank transaction(s)."
+            )
+
+        if skipped:
+            messages.info(
+                request,
+                f"{skipped} duplicate transaction(s) were skipped."
+            )
+
+        if errors:
+            messages.error(
+                request,
+                f"{len(errors)} transaction(s) could not be imported."
+            )
+
+        return render(
+            request,
+            "transactions/sandbox_sync.html",
+            {
+                "imported": imported,
+                "skipped": skipped,
+                "errors": errors,
+                "synced": True,
+            },
+        )
+
+    return render(
+        request,
+        "transactions/sandbox_sync.html",
+        {"synced": False},
     )
