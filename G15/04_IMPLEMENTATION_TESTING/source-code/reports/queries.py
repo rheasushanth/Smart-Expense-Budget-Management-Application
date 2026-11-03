@@ -12,7 +12,7 @@ from django.db.models import Sum
 from django.db.models.functions import TruncDay, TruncWeek
 
 from budgets.models import Budget
-from budgets.services import percentage_used, remaining_for, spend_for
+from budgets.services import percentage_used, remaining_for
 from transactions.models import Transaction
 
 TWO_PLACES = Decimal("0.01")
@@ -152,6 +152,44 @@ def chart_data(user, kind, start_date, end_date, group="day"):
     }
 
 
+def _spend_by_budget(user, budgets):
+    """Expense spend for several budgets at once (NFR-001).
+
+    Each budget covers its own category and its own date range, so the
+    totals are summed in Python over a single fetch rather than issuing one
+    aggregate query per budget, which made the budget report cost one query
+    per active budget at the TC-PERF-01 load.
+    """
+    if not budgets:
+        return {}
+
+    rows = Transaction.objects.filter(
+        user=user,
+        type=Transaction.TransactionType.EXPENSE,
+        category_id__in={budget.category_id for budget in budgets},
+        date__gte=min(budget.start_date for budget in budgets),
+        date__lte=max(budget.period_end for budget in budgets),
+    ).values_list("category_id", "date", "amount")
+
+    by_category = {}
+    for category_id, on, amount in rows:
+        by_category.setdefault(category_id, []).append((on, amount))
+
+    totals = {}
+    for budget in budgets:
+        total = sum(
+            (
+                amount
+                for on, amount in by_category.get(budget.category_id, ())
+                if budget.start_date <= on <= budget.period_end
+            ),
+            Decimal("0"),
+        )
+        totals[budget.pk] = total.quantize(TWO_PLACES)
+
+    return totals
+
+
 def budget_adherence(user, on_date=None):
     """Limit, spent-to-date and remaining for each active budget (FR-017).
 
@@ -160,16 +198,22 @@ def budget_adherence(user, on_date=None):
     """
     on_date = on_date or date.today()
 
-    active = [
-        budget
-        for budget in Budget.objects.filter(user=user).select_related("category")
-        if budget.period_end >= on_date
-    ]
+    # period_end is a Python property, so it cannot be filtered in SQL. A
+    # period runs at most 31 days (SRS Appendix B.3), so anything starting
+    # earlier than that has certainly ended: narrowing here keeps the report
+    # off a full scan of the user's budget history (NFR-001).
+    candidates = Budget.objects.filter(
+        user=user, start_date__gte=on_date - timedelta(days=31)
+    ).select_related("category")
+
+    active = [budget for budget in candidates if budget.period_end >= on_date]
     active.sort(key=lambda b: (b.category.name, b.start_date))
+
+    spend_by_budget = _spend_by_budget(user, active)
 
     report = []
     for budget in active:
-        spent = spend_for(budget)
+        spent = spend_by_budget[budget.pk]
         report.append(
             {
                 "budget": budget,

@@ -1,11 +1,14 @@
-from datetime import date
+from datetime import date, timedelta
 from decimal import Decimal
 
+from django.db import connection
 from django.test import TestCase
+from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 
 from accounts.models import User
 from budgets.models import Budget
+from budgets.services import spend_for
 from categories.models import Category
 from transactions.models import Transaction
 
@@ -260,6 +263,129 @@ class ReportPage(ReportTestData):
         response = self.client.get(reverse("report"))
         self.assertEqual(response.status_code, 302)
         self.assertIn("/accounts/login/", response.headers["Location"])
+
+
+class TCPERF01QueryCost(ReportTestData):
+    """TC-PERF-01 guards (NFR-001).
+
+    The 95th percentile itself is measured by the Locust run in
+    performance/locustfile.py, which needs a served application. These
+    tests pin the two things that made the reports scale badly, so a later
+    change cannot quietly reintroduce them between load runs.
+    """
+
+    def make_budget(self, category, limit="5000.00"):
+        budget = Budget(
+            user=self.user,
+            category=category,
+            period=Budget.Period.MONTHLY,
+            start_date=self.start,
+            limit_amount=Decimal(limit),
+        )
+        budget.full_clean()
+        budget.save()
+        return budget
+
+    def test_budget_adherence_cost_does_not_grow_with_budgets(self):
+        """One budget and three budgets must cost the same query count."""
+        self.make_budget(self.food)
+        self.seed_the_month()
+
+        with CaptureQueriesContext(connection) as one_budget:
+            budget_adherence(self.user)
+
+        self.make_budget(self.rent)
+        self.make_budget(self.travel)
+
+        with CaptureQueriesContext(connection) as three_budgets:
+            rows = budget_adherence(self.user)
+
+        self.assertEqual(len(rows), 3)
+        self.assertEqual(len(three_budgets), len(one_budget))
+
+    def test_budget_adherence_totals_survive_the_batched_query(self):
+        """The batched spend must agree with spend_for, budget by budget."""
+        self.make_budget(self.food)
+        self.make_budget(self.rent)
+        self.spend(self.food, "1000.00")
+        self.spend(self.rent, "3000.00")
+        # Spend in a category with no budget, and outside the period, so a
+        # batched query that filtered loosely would be caught.
+        self.spend(self.travel, "4321.00")
+        self.spend(self.food, "999.00", when=date(2020, 1, 15))
+
+        for row in budget_adherence(self.user):
+            with self.subTest(category=row["category"]):
+                self.assertEqual(row["spent"], spend_for(row["budget"]))
+
+    def test_expired_budgets_are_still_excluded_after_narrowing(self):
+        """The start_date pre-filter must not drop or admit the wrong rows."""
+        self.make_budget(self.food)
+        old = Budget(
+            user=self.user,
+            category=self.rent,
+            period=Budget.Period.MONTHLY,
+            start_date=self.start - timedelta(days=45),
+            limit_amount=Decimal("3000.00"),
+        )
+        old.full_clean()
+        old.save()
+
+        categories = [row["category"] for row in budget_adherence(self.user)]
+        self.assertEqual(categories, ["Food"])
+
+    def test_a_budget_ending_today_is_still_active(self):
+        """The 31-day narrowing must keep the boundary case (SRS App. B.3)."""
+        last_month = self.start - timedelta(days=1)
+        budget = Budget(
+            user=self.user,
+            category=self.rent,
+            period=Budget.Period.MONTHLY,
+            start_date=last_month.replace(day=1),
+            limit_amount=Decimal("3000.00"),
+        )
+        budget.full_clean()
+        budget.save()
+
+        rows = budget_adherence(self.user, on_date=budget.period_end)
+        self.assertIn("Rent", [row["category"] for row in rows])
+
+    def test_category_report_is_a_single_query(self):
+        self.seed_the_month()
+
+        with CaptureQueriesContext(connection) as queries:
+            category_report(self.user, self.start, self.end)
+
+        self.assertEqual(len(queries), 1)
+
+    def test_chart_data_is_a_single_query_per_chart(self):
+        self.seed_the_month()
+
+        for kind in ("pie", "bar", "line"):
+            with self.subTest(kind=kind):
+                with CaptureQueriesContext(connection) as queries:
+                    chart_data(self.user, kind, self.start, self.end)
+                self.assertEqual(len(queries), 1)
+
+    def test_transaction_carries_the_indexes_the_data_view_requires(self):
+        """SAD v1.1 Section 5.6: (user, date) and (user, category, date)."""
+        defined = {
+            tuple(index.fields) for index in Transaction._meta.indexes
+        }
+        self.assertIn(("user", "date"), defined)
+        self.assertIn(("user", "category", "date"), defined)
+
+    def test_the_indexes_exist_in_the_database(self):
+        """A declared index is worthless if no migration ever created it."""
+        with connection.cursor() as cursor:
+            names = set(
+                connection.introspection.get_constraints(
+                    cursor, Transaction._meta.db_table
+                )
+            )
+
+        self.assertIn("txn_user_date_idx", names)
+        self.assertIn("txn_user_cat_date_idx", names)
 
 
 class TCRPT02ChartData(ReportTestData):
