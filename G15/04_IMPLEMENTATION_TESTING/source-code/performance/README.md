@@ -8,10 +8,22 @@ with an error rate below 1%.
 Run Locust with 50 concurrent users for 10 minutes, each alternating
 dashboard, category report and budget page requests.
 
+## Installing the tool
+
+Locust lives in its own requirements file and its own virtual environment.
+It pins `pytest<9.0.0`, which conflicts with the `pytest==9.1.1` the test
+suite runs on, so installing it alongside the application silently downgrades
+pytest:
+
+```
+python -m venv .venv-perf
+.venv-perf/Scripts/pip install -r performance/requirements.txt
+```
+
 ## Running it
 
-1. Seed the dataset. The password is given on the command line and never
-   stored in the repository:
+1. Seed the dataset, using the **application's** environment. The password is
+   given on the command line and never stored in the repository:
 
    ```
    python manage.py seed_perf_data --password '<choose one>'

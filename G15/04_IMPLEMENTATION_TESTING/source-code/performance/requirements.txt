@@ -1,0 +1,9 @@
+# Load-testing tool for TC-PERF-01 only. Kept out of the application's
+# requirements.txt deliberately: locust 2.42.1 pins pytest<9.0.0, which
+# conflicts with the pytest==9.1.1 the test suite runs on, and CI has no
+# reason to install a load generator to run unit tests.
+#
+# Install into a separate virtual environment:
+#   python -m venv .venv-perf
+#   .venv-perf/Scripts/pip install -r performance/requirements.txt
+locust==2.42.1
