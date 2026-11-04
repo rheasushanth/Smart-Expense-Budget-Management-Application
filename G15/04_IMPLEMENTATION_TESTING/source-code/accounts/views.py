@@ -4,7 +4,10 @@ from django.shortcuts import render, redirect
 from django.contrib import messages
 from .forms import RegistrationForm
 from .forms import ProfileForm
-
+from datetime import timedelta
+from django.utils import timezone
+from accounts.models import User, SecurityEvent
+from accounts.security import log_security_event
 
 def register(request):
     if request.user.is_authenticated:
@@ -20,24 +23,104 @@ def register(request):
         form = RegistrationForm()
 
     return render(request, "accounts/register.html", {"form": form})
+
 def login_view(request):
     if request.method == "POST":
         email = request.POST.get("email", "").strip()
         password = request.POST.get("password", "")
+        now = timezone.now()
+
+        user_record = User.objects.filter(email__iexact=email).first()
+
+        # Check whether the account is currently locked.
+        if user_record and user_record.locked_until:
+            if user_record.locked_until > now:
+                messages.error(
+                    request,
+                    "Account temporarily locked. Please try again later."
+                )
+                return render(request, "accounts/login.html")
+
+            # Lockout expired: reset previous attempts.
+            user_record.failed_login_attempts = 0
+            user_record.locked_until = None
+            user_record.failed_login_window_started_at = None
+            user_record.save(update_fields=[
+                "failed_login_attempts",
+                "locked_until",
+                "failed_login_window_started_at",
+            ])
 
         user = authenticate(
             request,
             email=email,
-            password=password
+            password=password,
         )
 
         if user is not None:
+            user.failed_login_attempts = 0
+            user.locked_until = None
+            user.failed_login_window_started_at = None
+            user.save(update_fields=[
+                "failed_login_attempts",
+                "locked_until",
+                "failed_login_window_started_at",
+            ])
+
             login(request, user)
             return redirect("home")
+
+        # Record failed login for an identifiable account.
+        if user_record:
+            window_start = user_record.failed_login_window_started_at
+
+            if (
+                window_start is None
+                or now - window_start >= timedelta(minutes=10)
+            ):
+                user_record.failed_login_attempts = 0
+                user_record.failed_login_window_started_at = now
+
+            user_record.failed_login_attempts += 1
+
+            log_security_event(
+                SecurityEvent.EventType.FAILED_LOGIN,
+                "Failed login attempt.",
+                request=request,
+                user=user_record,
+                email=email,
+            )
+
+            if user_record.failed_login_attempts >= 5:
+                user_record.locked_until = now + timedelta(minutes=10)
+
+                log_security_event(
+                    SecurityEvent.EventType.ACCOUNT_LOCKED,
+                    "Account locked after five failed login attempts.",
+                    request=request,
+                    user=user_record,
+                    email=email,
+                )
+
+            user_record.save(update_fields=[
+                "failed_login_attempts",
+                "failed_login_window_started_at",
+                "locked_until",
+            ])
+
+        else:
+            # Also log attempts using unknown email addresses.
+            log_security_event(
+                SecurityEvent.EventType.FAILED_LOGIN,
+                "Failed login attempt for an unknown email address.",
+                request=request,
+                email=email,
+            )
 
         messages.error(request, "Invalid email or password.")
 
     return render(request, "accounts/login.html")
+
 @login_required
 def profile_view(request):
     if request.method == "POST":
