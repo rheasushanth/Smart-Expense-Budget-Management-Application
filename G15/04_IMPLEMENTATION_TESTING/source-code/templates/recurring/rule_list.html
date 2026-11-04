@@ -36,8 +36,17 @@
             <td>{{ rule.frequency }}</td>
             <td>{{ rule.next_run_date }}</td>
             <td>
-                {% if rule.is_active %}<span class="tag">Active</span>
-                {% else %}<span class="tag tag-muted">Inactive</span>{% endif %}
+                {% if rule.is_active %}
+                    <span class="tag">Active</span>
+                {% else %}
+                    <span class="tag tag-muted">Inactive</span>
+                {% endif %}
+
+                {% if rule.category_disabled %}
+                    <p class="error">
+                        Category disabled — transaction skipped.
+                    </p>
+                {% endif %}
             </td>
             <td>
                 {% if rule.is_active %}
