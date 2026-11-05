@@ -22,6 +22,7 @@ Machine-readable artifacts are in [`test-reports/artifacts/`](test-reports/artif
 | [**Test Case Document v1.2**](test-case-document-v1.2.md) | **The current Test Case Document.** All 37 cases with the expected results the delivered system meets, superseding Sections 13.1 and 13.2 of the v1.1 PDF |
 | [Test Case Update Log](test-case-updates.md) | Narrative of what changed and why, supporting v1.2 |
 | [Sprint 3 Plan](sprint-3-plan.md) | Spillover sprint scope, sequence and blockers |
+| [Deployment](deployment.md) | The Render environment, its constraints, and the procedure TC-POL-01 reviews |
 
 Test Case Document v1.2 supersedes Sections 13.1 and 13.2 of
 `03_DESIGN/G15_ValidationSpec_v2.pdf` (Validation Spec v1.1, 13 October 2026). The v1.1
