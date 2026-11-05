@@ -45,6 +45,18 @@ class Transaction(models.Model):
         blank=True,
         related_name="transactions",
     )
+    class Meta:
+        # SAD v1.1 Section 5.6 data view. Every report filters by owner and
+        # date, so without these each report is a full table scan and
+        # NFR-001 cannot hold at the TC-PERF-01 load.
+        indexes = [
+            models.Index(fields=["user", "date"], name="txn_user_date_idx"),
+            models.Index(
+                fields=["user", "category", "date"],
+                name="txn_user_cat_date_idx",
+            ),
+        ]
+
     def save(self, *args, **kwargs):
         # FR-021: prevent disabled categories from being assigned
         # to new transactions.
