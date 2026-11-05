@@ -1,7 +1,8 @@
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_http_methods
 from django.contrib.auth import get_user_model
-
+from accounts.models import SecurityEvent
+from accounts.security import log_security_event
 from accounts.permissions import role_required
 from .forms import CategoryForm
 from .models import Category
@@ -29,6 +30,12 @@ def category_add(request):
         category = form.save(commit=False)
         category.created_by = request.user
         category.save()
+        log_security_event(
+            SecurityEvent.EventType.CATEGORY_CREATED,
+            f"Administrator created category: {category.name}.",
+            request=request,
+            user=request.user,
+        )
         return redirect("categories:list")
 
     return render(
@@ -45,7 +52,14 @@ def category_edit(request, category_id):
     form = CategoryForm(request.POST or None, instance=category)
 
     if request.method == "POST" and form.is_valid():
-        form.save()
+        updated_category = form.save()
+
+        log_security_event(
+            SecurityEvent.EventType.CATEGORY_UPDATED,
+            f"Administrator updated category: {updated_category.name}.",
+            request=request,
+            user=request.user,
+        )
         return redirect("categories:list")
 
     return render(
@@ -61,6 +75,12 @@ def category_disable(request, category_id):
     category = get_object_or_404(Category, pk=category_id)
     category.is_active = False
     category.save(update_fields=["is_active"])
+    log_security_event(
+        SecurityEvent.EventType.CATEGORY_STATUS_CHANGED,
+        f"Administrator disabled category: {category.name}.",
+        request=request,
+        user=request.user,
+    )
     return redirect("categories:list")
 
 
@@ -70,6 +90,12 @@ def category_enable(request, category_id):
     category = get_object_or_404(Category, pk=category_id)
     category.is_active = True
     category.save(update_fields=["is_active"])
+    log_security_event(
+        SecurityEvent.EventType.CATEGORY_STATUS_CHANGED,
+        f"Administrator enabled category: {category.name}.",
+        request=request,
+        user=request.user,
+    )
     return redirect("categories:list")
 
 
