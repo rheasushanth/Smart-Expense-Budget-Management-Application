@@ -1,0 +1,51 @@
+# Render Blueprint — issue #70.
+#
+# Defines the environment TC-PERF-01 (NFR-001), TC-AVAIL-01 (NFR-002) and
+# TC-POL-01 (NFR-007) need, so it is reproducible from the repository rather
+# than configured by hand in a dashboard.
+#
+# Create both services with: Render dashboard -> New -> Blueprint, pointed at
+# this repository.
+
+databases:
+  - name: smart-expense-db
+    databaseName: smart_expense
+    user: smart_expense
+    plan: free
+
+services:
+  - type: web
+    name: smart-expense
+    runtime: python
+    plan: free
+    region: singapore
+    rootDir: G15/04_IMPLEMENTATION_TESTING/source-code
+    buildCommand: "pip install -r requirements.txt && ./build.sh"
+    startCommand: "gunicorn config.wsgi:application"
+    # NFR-002: Render restarts the service when this stops returning 200.
+    healthCheckPath: /healthz/
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.12.6"
+
+      # Generated once by Render and held in the service, never in the repo.
+      - key: DJANGO_SECRET_KEY
+        generateValue: true
+
+      # Explicit, even though settings.py now defaults to False (#61, PR #73).
+      # The default is the safety net; this is the statement of intent.
+      - key: DJANGO_DEBUG
+        value: "False"
+
+      # Resolved to this service's own hostname, so ALLOWED_HOSTS cannot drift
+      # from the URL the application is actually served on.
+      - key: DJANGO_ALLOWED_HOSTS
+        fromService:
+          type: web
+          name: smart-expense
+          property: host
+
+      - key: DATABASE_URL
+        fromDatabase:
+          name: smart-expense-db
+          property: connectionString
