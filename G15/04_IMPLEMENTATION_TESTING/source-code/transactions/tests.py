@@ -510,6 +510,103 @@ class CSVImportTests(TestCase):
         )
         self.assertEqual(len(response.context["errors"]), 1)
         self.assertIn("Duplicate", response.context["errors"][0]["reason"])
+    
+    def test_TC_REL_01_reimporting_same_csv_three_times_creates_no_duplicates(self):
+        from transactions.importer import import_transactions
+
+        rows = [
+            "date,amount,type,category,note"
+        ]
+        for day in range(1, 21):
+            rows.append(
+                f"2026-10-{day:02d},{day * 10}.00,Expense,Food,Item {day}"
+            )
+        csv_content = "\n".join(rows)
+
+        first_result = import_transactions(csv_content, self.user)
+        self.assertEqual(first_result["imported"], 20)
+        self.assertEqual(
+            Transaction.objects.filter(
+                user=self.user,
+                source=Transaction.Source.CSV,
+            ).count(),
+            20,
+        )
+
+        second_result = import_transactions(csv_content, self.user)
+        self.assertEqual(second_result["imported"], 0)
+        self.assertEqual(
+            Transaction.objects.filter(
+                user=self.user,
+                source=Transaction.Source.CSV,
+            ).count(),
+            20,
+        )
+
+        third_result = import_transactions(csv_content, self.user)
+        self.assertEqual(third_result["imported"], 0)
+        self.assertEqual(
+            Transaction.objects.filter(
+                user=self.user,
+                source=Transaction.Source.CSV,
+            ).count(),
+            20,
+        )
+
+    def test_TC_REL_01_retry_after_interrupted_import_completes_remaining_rows(self):
+        from unittest.mock import patch
+        from transactions.importer import import_transactions
+
+        rows = [
+            "date,amount,type,category,note"
+        ]
+        for day in range(1, 21):
+            rows.append(
+                f"2026-10-{day:02d},{day * 10}.00,Expense,Food,Item {day}"
+            )
+        csv_content = "\n".join(rows)
+
+        original_create = Transaction.objects.create
+        create_calls = 0
+
+        def interrupt_after_ten(*args, **kwargs):
+            nonlocal create_calls
+            create_calls += 1
+
+            if create_calls == 11:
+                raise KeyboardInterrupt("Simulated import interruption")
+
+            return original_create(*args, **kwargs)
+
+        with patch.object(
+            Transaction.objects,
+            "create",
+            side_effect=interrupt_after_ten,
+        ):
+            with self.assertRaises(KeyboardInterrupt):
+                import_transactions(csv_content, self.user)
+
+        # Ten rows were saved before the simulated interruption.
+        self.assertEqual(
+            Transaction.objects.filter(
+                user=self.user,
+                source=Transaction.Source.CSV,
+            ).count(),
+            10,
+        )
+
+        # Re-import the same file to complete the remaining ten rows.
+        retry_result = import_transactions(csv_content, self.user)
+
+        self.assertEqual(retry_result["imported"], 10)
+        self.assertEqual(
+            Transaction.objects.filter(
+                user=self.user,
+                source=Transaction.Source.CSV,
+            ).count(),
+            20,
+        )
+    
     def test_TC_SEC_03_rejects_csv_over_2mb(self):
         from django.core.files.uploadedfile import SimpleUploadedFile
 
