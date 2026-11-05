@@ -418,6 +418,7 @@ class CSVImportTests(TestCase):
             is_active=True,
             created_by=self.user,
         )
+
         self.income_category = Category.objects.create(
             name="Salary",
             type=Category.CategoryType.INCOME,
@@ -461,10 +462,12 @@ class CSVImportTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.context["imported"], 7)
         self.assertEqual(len(response.context["errors"]), 3)
+
         self.assertEqual(
             {item["row"] for item in response.context["errors"]},
             {5, 6, 7},
         )
+
         self.assertEqual(
             Transaction.objects.filter(user=self.user).count(),
             7,
@@ -472,7 +475,11 @@ class CSVImportTests(TestCase):
 
     def test_import_page_requires_login(self):
         self.client.logout()
-        response = self.client.get(reverse("import_transactions"))
+
+        response = self.client.get(
+            reverse("import_transactions")
+        )
+
         self.assertEqual(response.status_code, 302)
 
     def test_duplicate_csv_rows_are_skipped(self):
@@ -497,6 +504,7 @@ class CSVImportTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.context["imported"], 1)
+
         self.assertEqual(
             Transaction.objects.filter(
                 user=self.user,
@@ -508,8 +516,109 @@ class CSVImportTests(TestCase):
             ).count(),
             1,
         )
+
         self.assertEqual(len(response.context["errors"]), 1)
-        self.assertIn("Duplicate", response.context["errors"][0]["reason"])
+        self.assertIn(
+            "Duplicate",
+            response.context["errors"][0]["reason"],
+        )
+
+    def test_TC_REL_01_reimporting_same_csv_three_times_creates_no_duplicates(self):
+        from transactions.importer import import_transactions
+
+        rows = [
+            "date,amount,type,category,note"
+        ]
+        for day in range(1, 21):
+            rows.append(
+                f"2026-10-{day:02d},{day * 10}.00,Expense,Food,Item {day}"
+            )
+        csv_content = "\n".join(rows)
+
+        first_result = import_transactions(csv_content, self.user)
+        self.assertEqual(first_result["imported"], 20)
+        self.assertEqual(
+            Transaction.objects.filter(
+                user=self.user,
+                source=Transaction.Source.CSV,
+            ).count(),
+            20,
+        )
+
+        second_result = import_transactions(csv_content, self.user)
+        self.assertEqual(second_result["imported"], 0)
+        self.assertEqual(
+            Transaction.objects.filter(
+                user=self.user,
+                source=Transaction.Source.CSV,
+            ).count(),
+            20,
+        )
+
+        third_result = import_transactions(csv_content, self.user)
+        self.assertEqual(third_result["imported"], 0)
+        self.assertEqual(
+            Transaction.objects.filter(
+                user=self.user,
+                source=Transaction.Source.CSV,
+            ).count(),
+            20,
+        )
+
+    def test_TC_REL_01_retry_after_interrupted_import_completes_remaining_rows(self):
+        from unittest.mock import patch
+        from transactions.importer import import_transactions
+
+        rows = [
+            "date,amount,type,category,note"
+        ]
+        for day in range(1, 21):
+            rows.append(
+                f"2026-10-{day:02d},{day * 10}.00,Expense,Food,Item {day}"
+            )
+        csv_content = "\n".join(rows)
+
+        original_create = Transaction.objects.create
+        create_calls = 0
+
+        def interrupt_after_ten(*args, **kwargs):
+            nonlocal create_calls
+            create_calls += 1
+
+            if create_calls == 11:
+                raise KeyboardInterrupt("Simulated import interruption")
+
+            return original_create(*args, **kwargs)
+
+        with patch.object(
+            Transaction.objects,
+            "create",
+            side_effect=interrupt_after_ten,
+        ):
+            with self.assertRaises(KeyboardInterrupt):
+                import_transactions(csv_content, self.user)
+
+        # Ten rows were saved before the simulated interruption.
+        self.assertEqual(
+            Transaction.objects.filter(
+                user=self.user,
+                source=Transaction.Source.CSV,
+            ).count(),
+            10,
+        )
+
+        # Re-import the same file to complete the remaining ten rows.
+        retry_result = import_transactions(csv_content, self.user)
+
+        self.assertEqual(retry_result["imported"], 10)
+        self.assertEqual(
+            Transaction.objects.filter(
+                user=self.user,
+                source=Transaction.Source.CSV,
+            ).count(),
+            20,
+        )
+
     def test_TC_SEC_03_rejects_csv_over_2mb(self):
         from django.core.files.uploadedfile import SimpleUploadedFile
 
@@ -532,11 +641,104 @@ class CSVImportTests(TestCase):
             0,
         )
 
+    def test_TC_SEC_03_rejects_non_utf8_csv(self):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+
+        invalid_content = (
+            b"date,amount,type,category,note\n"
+            b"2026-10-01,100.00,Expense,Food,\xff\xfe"
+        )
+
+        upload = SimpleUploadedFile(
+            "invalid_encoding.csv",
+            invalid_content,
+            content_type="text/csv",
+        )
+
+        response = self.client.post(
+            reverse("import_transactions"),
+            {"csv_file": upload},
+        )
+
+        self.assertEqual(response.status_code, 200)
+
+        # The form should reject the invalid encoding.
+        self.assertContains(
+            response,
+            "CSV file must use UTF-8 encoding.",
+        )
+
+        self.assertEqual(
+            Transaction.objects.filter(user=self.user).count(),
+            0,
+        )
+
+    def test_TC_SEC_03_formula_cell_is_stored_as_text(self):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        import csv
+        import io
+
+        formula = '=HYPERLINK("https://example.com","click")'
+
+        output = io.StringIO()
+        writer = csv.writer(output)
+        writer.writerow(["date", "amount", "type", "category", "note"])
+        writer.writerow([
+            "2026-10-01",
+            "100.00",
+            "Expense",
+            "Food",
+            formula,
+        ])
+
+        upload = SimpleUploadedFile(
+            "formula.csv",
+            output.getvalue().encode("utf-8"),
+            content_type="text/csv",
+        )
+
+        response = self.client.post(
+            reverse("import_transactions"),
+            {"csv_file": upload},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context["imported"], 1)
+
+        transaction = Transaction.objects.get(user=self.user)
+        self.assertEqual(transaction.note, formula)
+    def test_TC_SEC_03_sql_payload_is_stored_literally(self):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+
+        sql_payload = "' OR 1=1 --"
+
+        csv_content = (
+            "date,amount,type,category,note\n"
+            f"2026-10-01,100.00,Expense,Food,{sql_payload}\n"
+        )
+
+        upload = SimpleUploadedFile(
+            "sql_payload.csv",
+            csv_content.encode("utf-8"),
+            content_type="text/csv",
+        )
+
+        response = self.client.post(
+            reverse("import_transactions"),
+            {"csv_file": upload},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context["imported"], 1)
+
+        transaction = Transaction.objects.get(user=self.user)
+
+        self.assertEqual(transaction.note, sql_payload)
+
     def test_TC_TXN_07_existing_and_in_file_duplicates_are_skipped(self):
         from datetime import date
         from django.core.files.uploadedfile import SimpleUploadedFile
 
-        # Create a transaction that already exists in the database.
         Transaction.objects.create(
             user=self.user,
             date=date(2026, 10, 11),
@@ -566,19 +768,18 @@ class CSVImportTests(TestCase):
         )
 
         self.assertEqual(response.status_code, 200)
-
-        # Two new rows should import; two duplicate rows should be reported.
         self.assertEqual(response.context["imported"], 2)
         self.assertEqual(len(response.context["errors"]), 2)
 
         reasons = [
-            error["reason"] for error in response.context["errors"]
+            error["reason"]
+            for error in response.context["errors"]
         ]
+
         self.assertTrue(
             all("Duplicate" in reason for reason in reasons)
         )
 
-        # Exactly two CSV transactions should have been saved.
         self.assertEqual(
             Transaction.objects.filter(
                 user=self.user,
@@ -587,7 +788,6 @@ class CSVImportTests(TestCase):
             2,
         )
 
-        # The repeated Lunch transaction must exist only once.
         self.assertEqual(
             Transaction.objects.filter(
                 user=self.user,
@@ -599,7 +799,6 @@ class CSVImportTests(TestCase):
             1,
         )
 
-        # The Paycheck transaction must also be saved.
         self.assertEqual(
             Transaction.objects.filter(
                 user=self.user,
@@ -790,8 +989,37 @@ class SandboxBankSyncTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Sync Results")
         self.assertContains(response, "Successfully imported")
-
+ 
     def _sync(self, user=None):
         from transactions.sandbox_sync import sync_sandbox_transactions
 
         return sync_sandbox_transactions(user or self.user)
+
+    def test_TC_SEC_05_sensitive_credentials_are_not_exposed_in_errors(self):
+        sensitive_token = "SECRET_SANDBOX_ACCESS_TOKEN_12345"
+
+        with patch(
+            "transactions.sandbox_sync.fetch_bank_transactions",
+            side_effect=SandboxAPIError(
+                f"Authentication failed: {sensitive_token}"
+            ),
+        ):
+            result = self._sync()
+
+        self.assertEqual(result["imported"], 0)
+        self.assertEqual(result["skipped"], 0)
+
+        error_text = str(result["errors"])
+
+        self.assertNotIn(sensitive_token, error_text)
+
+        self.assertIn(
+            "Sandbox service unavailable",
+            error_text,
+        )
+
+        self.assertFalse(
+            SandboxTransactionImport.objects.filter(
+                user=self.user,
+            ).exists()
+        )
