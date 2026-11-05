@@ -81,6 +81,38 @@ class SecurityAcceptanceTests(TestCase):
         self.assertNotIn("_auth_user_id", self.client.session)
         self.assertContains(response, "temporarily locked")
 
+    def test_tc_sec_06_03b_lockout_is_not_revealed_without_the_password(self):
+        """A wrong password must not disclose that an account is locked.
+
+        Only a registered address can ever be locked, so answering a wrong
+        password with "temporarily locked" would tell an attacker which
+        email addresses exist (SEC-002, SRS 5.1.2). The reply has to match
+        the one an unknown address gets.
+        """
+        self.customer.locked_until = timezone.now() + timedelta(minutes=10)
+        self.customer.failed_login_attempts = 5
+        self.customer.save()
+
+        locked = self.client.post(
+            reverse("login"),
+            {
+                "email": self.customer.email,
+                "password": "WrongPassword123",
+            },
+        )
+        unknown = self.client.post(
+            reverse("login"),
+            {
+                "email": "nobody@example.com",
+                "password": "WrongPassword123",
+            },
+        )
+
+        self.assertNotIn("_auth_user_id", self.client.session)
+        self.assertNotContains(locked, "temporarily locked")
+        self.assertContains(locked, "Invalid email or password.")
+        self.assertContains(unknown, "Invalid email or password.")
+
     def test_tc_sec_06_04_expired_lockout_allows_login(self):
         self.customer.locked_until = timezone.now() - timedelta(seconds=1)
         self.customer.failed_login_attempts = 5

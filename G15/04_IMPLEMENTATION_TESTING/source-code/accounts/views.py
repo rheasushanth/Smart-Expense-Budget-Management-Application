@@ -32,16 +32,13 @@ def login_view(request):
 
         user_record = User.objects.filter(email__iexact=email).first()
 
-        # Check whether the account is currently locked.
-        if user_record and user_record.locked_until:
-            if user_record.locked_until > now:
-                messages.error(
-                    request,
-                    "Account temporarily locked. Please try again later."
-                )
-                return render(request, "accounts/login.html")
-
-            # Lockout expired: reset previous attempts.
+        # Clear a lockout that has already run its course, so the attempt
+        # below is judged on the credentials alone.
+        if (
+            user_record
+            and user_record.locked_until
+            and user_record.locked_until <= now
+        ):
             user_record.failed_login_attempts = 0
             user_record.locked_until = None
             user_record.failed_login_window_started_at = None
@@ -56,6 +53,22 @@ def login_view(request):
             email=email,
             password=password,
         )
+
+        # The lock is enforced after authentication, and the reason is given
+        # only to someone who supplied the correct password. Answering a
+        # wrong password with "account locked" would tell an attacker which
+        # email addresses are registered (SEC-002, SRS 5.1.2).
+        if (
+            user is not None
+            and user_record
+            and user_record.locked_until
+            and user_record.locked_until > now
+        ):
+            messages.error(
+                request,
+                "Account temporarily locked. Please try again later."
+            )
+            return render(request, "accounts/login.html")
 
         if user is not None:
             user.failed_login_attempts = 0
