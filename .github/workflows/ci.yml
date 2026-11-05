@@ -41,8 +41,16 @@ jobs:
       - name: Collect static files
         run: python manage.py collectstatic --noinput
 
+      # --cov-branch adds decision coverage alongside statement coverage, so
+      # the branch-coverage report in docs/ can be regenerated from CI output
+      # rather than only from a local run.
       - name: Run tests with coverage
-        run: pytest --cov=. --cov-report=term --cov-report=xml
+        run: >
+          pytest
+          --cov=. --cov-branch
+          --cov-report=term
+          --cov-report=xml
+          --junitxml=junit.xml
 
       # NFR-005 requires at least 70% line coverage on the business-logic
       # apps. Measured on those three only, so coverage of templates,
@@ -59,5 +67,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: coverage-report
-          path: G15/04_IMPLEMENTATION_TESTING/source-code/coverage.xml
+          path: |
+            G15/04_IMPLEMENTATION_TESTING/source-code/coverage.xml
+            G15/04_IMPLEMENTATION_TESTING/source-code/junit.xml
           if-no-files-found: ignore
