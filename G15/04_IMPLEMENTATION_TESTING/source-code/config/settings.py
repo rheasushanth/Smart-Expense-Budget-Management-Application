@@ -21,7 +21,12 @@ SECRET_KEY = os.environ.get(
     "django-insecure-local-development-key-change-me",
 )
 
-DEBUG = os.environ.get("DJANGO_DEBUG", "True").lower() == "true"
+# Defaults to False so the setting fails closed. A deployment that forgets
+# DJANGO_DEBUG gets an unhelpful error page; the previous default of True
+# silently skipped the entire production security block below, serving
+# traffic with every transport control disabled and nothing signalling it.
+# Local development opts in by setting DJANGO_DEBUG=True.
+DEBUG = os.environ.get("DJANGO_DEBUG", "False").lower() == "true"
 
 ALLOWED_HOSTS = os.environ.get(
     "DJANGO_ALLOWED_HOSTS",
