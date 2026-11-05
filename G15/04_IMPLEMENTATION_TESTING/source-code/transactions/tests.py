@@ -887,8 +887,37 @@ class SandboxBankSyncTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Sync Results")
         self.assertContains(response, "Successfully imported")
-
+ 
     def _sync(self, user=None):
         from transactions.sandbox_sync import sync_sandbox_transactions
 
         return sync_sandbox_transactions(user or self.user)
+
+    def test_TC_SEC_05_sensitive_credentials_are_not_exposed_in_errors(self):
+        sensitive_token = "SECRET_SANDBOX_ACCESS_TOKEN_12345"
+
+        with patch(
+            "transactions.sandbox_sync.fetch_bank_transactions",
+            side_effect=SandboxAPIError(
+                f"Authentication failed: {sensitive_token}"
+            ),
+        ):
+            result = self._sync()
+
+        self.assertEqual(result["imported"], 0)
+        self.assertEqual(result["skipped"], 0)
+
+        error_text = str(result["errors"])
+
+        self.assertNotIn(sensitive_token, error_text)
+
+        self.assertIn(
+            "Sandbox service unavailable",
+            error_text,
+        )
+
+        self.assertFalse(
+            SandboxTransactionImport.objects.filter(
+                user=self.user,
+            ).exists()
+        )
