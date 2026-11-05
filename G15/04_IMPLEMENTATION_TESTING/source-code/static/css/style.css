@@ -116,3 +116,37 @@ body {
     margin-bottom: 20px;
     font-size: 15px;
 }
+
+/* Analytics dashboard (FR-018) */
+.chart-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 20px;
+    margin-top: 20px;
+}
+
+.chart-card {
+    background: #ffffff;
+    border: 1px solid #e3e6ea;
+    border-radius: 10px;
+    padding: 18px 20px 22px;
+}
+
+.chart-card h2 {
+    font-size: 16px;
+    margin: 0 0 14px;
+}
+
+.chart-card canvas {
+    max-height: 280px;
+}
+
+.chart-card-wide {
+    grid-column: 1 / -1;
+}
+
+@media (max-width: 760px) {
+    .chart-grid {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
