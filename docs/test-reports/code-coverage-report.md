@@ -3,7 +3,7 @@
 **Project:** Smart Expense & Budget Management Application
 **Group:** G-15
 **Date:** 5 November 2026
-**Commit:** `7ea5525` on `main`
+**Commit:** `1429bc4` on `main`
 **Tool:** coverage.py 7.16.2 via pytest-cov 7.1.0
 **Command:**
 
@@ -20,12 +20,12 @@ Machine-readable output: [`artifacts/coverage.xml`](artifacts/coverage.xml),
 
 | Scope | Statements | Missed | **Line coverage** |
 | --- | ---: | ---: | ---: |
-| Production code (tests and migrations excluded) | 1225 | 140 | **88.6%** |
-| NFR-005 scope — `budgets`, `recurring`, `transactions` | 678 | 60 | **91.2%** |
-| Whole measured tree, including test modules | 2733 | 140 | 92.9% |
+| Production code (tests and migrations excluded) | 1284 | 183 | **85.7%** |
+| NFR-005 scope — `budgets`, `recurring`, `transactions` | 723 | 103 | **85.8%** |
+| Whole measured tree, including test modules | 2862 | 183 | 91.6% |
 
 **NFR-005 requires at least 70% line coverage on the budgets, recurring and
-transactions business-logic apps. Measured: 91.2%. The requirement is met.**
+transactions business-logic apps. Measured: 85.8%. The requirement is met.**
 
 ## Per application
 
@@ -33,14 +33,30 @@ Tests and migrations excluded, so these figures describe production code only.
 
 | Application | Statements | Missed | Line coverage |
 | --- | ---: | ---: | ---: |
-| `reports` | 138 | 1 | 99.3% |
+| `reports` | 152 | 1 | 99.3% |
 | `budgets` | 191 | 5 | 97.4% |
 | `recurring` | 143 | 16 | 88.8% |
-| `transactions` | 344 | 39 | 88.7% |
 | `categories` | 111 | 15 | 86.5% |
 | `accounts` | 238 | 47 | 80.3% |
+| `transactions` | 389 | 82 | 78.9% |
 | `config` | 60 | 17 | 71.7% |
-| **Total** | **1225** | **140** | **88.6%** |
+| **Total** | **1284** | **183** | **85.7%** |
+
+## Coverage fell during Sprint 2, and the reason is worth recording
+
+An earlier measurement of this branch, taken before PR #68 merged, gave 88.6% on
+production code. The figure is now 85.7%. Coverage did not fall because tests were
+removed — 8 tests were *added* — but because PR #68 introduced
+`transactions/management/commands/seed_perf_data.py`, a 43-statement operational
+command that seeds the TC-PERF-01 dataset and has no test of its own. It is counted as
+production code, so it dilutes the percentage.
+
+This is the honest explanation and it is a real gap, not a measurement artefact: the
+command is executable code that nothing verifies. The recommended fix is a short test
+invoking it with `--count=5` and asserting the row count, which would restore roughly
+three points. Carried into Sprint 3.
+
+`transactions` is the only app whose figure moved; every other app is unchanged.
 
 ## A note on the measurement scope
 
@@ -55,14 +71,15 @@ visible rather than hidden. Either way the 70% requirement is comfortably met.
 
 ## Where the uncovered lines are
 
-| Area | Line coverage | Reason |
-| --- | ---: | --- |
-| `config/settings.py` | 71.7% | The `if not DEBUG:` production block is not exercised under test settings. Related to issue #61. |
-| `accounts/views.py`, `accounts/models.py` | 80.3% | Manager branches for superuser creation, and some error paths in profile handling |
-| `transactions/sandbox_adapter.py` | 67% | Live REST implementation; tests run against the mock, as NFR-006 requires |
-| `transactions/importer.py` | 78% | Defensive branches for malformed uploads that the form rejects first |
+| Area | Reason |
+| --- | --- |
+| `transactions/management/commands/seed_perf_data.py` | Operational command added by PR #68; no test. See above. |
+| `config/settings.py` | The `if not DEBUG:` production block is not exercised under test settings. Related to issue #61. |
+| `accounts/views.py`, `accounts/models.py` | Manager branches for superuser creation, and some error paths in profile handling |
+| `transactions/sandbox_adapter.py` | Live REST implementation; tests run against the mock, as NFR-006 requires |
+| `transactions/importer.py` | Defensive branches for malformed uploads that the form rejects first |
 
-None of the uncovered areas is business logic required by a functional requirement.
+No functional requirement depends on an uncovered path.
 
 See also the [Branch Coverage Report](branch-coverage-report.md), which measures
 decision outcomes rather than executed lines and is the stricter of the two.

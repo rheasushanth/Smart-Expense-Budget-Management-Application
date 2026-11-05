@@ -3,7 +3,7 @@
 **Project:** Smart Expense & Budget Management Application
 **Group:** G-15
 **Date:** 5 November 2026
-**Commit:** `7ea5525` on `main`
+**Commit:** `1429bc4` on `main`
 **Baseline:** Validation Spec v1.1 (`03_DESIGN/G15_ValidationSpec_v2.pdf`), Sections 13.1 and 13.2
 **Environment:** Python 3.12.6, Django 5.2.18, SQLite, Django test client
 
@@ -26,7 +26,7 @@ Against the exit criteria in Validation Spec Section 14:
 | Criterion | Status |
 | --- | --- |
 | All High-priority requirements pass | **Met**, except NFR-001, whose measured run is blocked (see below) |
-| At least 70% line coverage on budgets, recurring, transactions | **Met** — 91.2% |
+| At least 70% line coverage on budgets, recurring, transactions | **Met** — 85.8% |
 | Zero open High or Critical security findings | **Met** — the user-enumeration finding raised in review of PR #69 was fixed before merge |
 | Every failed Medium or Low case has a documented workaround | **Met** — no case fails |
 
