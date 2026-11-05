@@ -27,18 +27,25 @@ def sync_sandbox_transactions(user):
 
     try:
         bank_transactions = fetch_bank_transactions()
-    except SandboxAPIError as exc:
+    except SandboxAPIError:
         return {
             "imported": 0,
             "skipped": 0,
-            "errors": [{"reason": str(exc)}],
+            "errors": [{
+                "reason": (
+                    "Sandbox service unavailable. "
+                    "Please try again later."
+                )
+            }],
         }
 
     if not isinstance(bank_transactions, list):
         return {
             "imported": 0,
             "skipped": 0,
-            "errors": [{"reason": "Invalid sandbox API response."}],
+            "errors": [{
+                "reason": "Invalid sandbox API response."
+            }],
         }
 
     for index, raw_transaction in enumerate(bank_transactions, start=1):
@@ -93,10 +100,10 @@ def sync_sandbox_transactions(user):
         except IntegrityError:
             skipped += 1
 
-        except Exception as exc:
+        except Exception:
             errors.append({
                 "row": index,
-                "reason": str(exc),
+                "reason": "Transaction could not be processed.",
             })
 
     return {
