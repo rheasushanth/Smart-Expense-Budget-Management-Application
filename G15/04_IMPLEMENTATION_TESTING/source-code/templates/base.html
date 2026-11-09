@@ -6,6 +6,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Smart Expense & Budget Manager{% endblock %}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=DM+Sans:wght@400;500;600;700&display=swap"
+          rel="stylesheet">
     <link rel="stylesheet" href="{% static 'css/style.css' %}">
 </head>
 <body>
@@ -41,12 +45,40 @@
             {% endfor %}
         {% endif %}
         {% block content %}
-        <section class="welcome-card">
-            <p class="eyebrow">PERSONAL FINANCE</p>
-            <h1>Take control of your money.</h1>
-            <p class="subtitle">
-                Track expenses, manage budgets, and build better financial habits.
+        <section class="hero">
+            <p class="eyebrow">Personal Finance</p>
+
+            <h1>Take control<br>of your money.</h1>
+
+            <p class="hero-lede">
+                Track every expense, set budgets that hold you to account, and
+                see exactly where your money goes each month.
             </p>
+
+            <div class="hero-actions">
+                {% if user.is_authenticated %}
+                    <a class="button" href="{% url 'record_expense' %}">Record an expense</a>
+                    <a class="button button-ghost" href="{% url 'dashboard' %}">View dashboard</a>
+                {% else %}
+                    <a class="button" href="{% url 'register' %}">Get started</a>
+                    <a class="button button-ghost" href="{% url 'login' %}">Log in</a>
+                {% endif %}
+            </div>
+
+            <div class="hero-highlights">
+                <div class="highlight">
+                    <h2>Budgets</h2>
+                    <p>Set a monthly limit per category and get alerted before you overspend.</p>
+                </div>
+                <div class="highlight">
+                    <h2>Reports</h2>
+                    <p>See spending by category and how closely you stuck to each budget.</p>
+                </div>
+                <div class="highlight">
+                    <h2>Automation</h2>
+                    <p>Recurring rules and bank sync keep your records up to date for you.</p>
+                </div>
+            </div>
         </section>
         {% endblock %}
     </main>

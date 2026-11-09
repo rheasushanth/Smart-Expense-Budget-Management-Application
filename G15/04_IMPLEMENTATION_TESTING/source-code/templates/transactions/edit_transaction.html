@@ -2,13 +2,16 @@
 {% extends "base.html" %}
 
 {% block content %}
-<h2>Edit Transaction</h2>
+<section class="page-head">
+    <h1>Edit Transaction</h1>
+</section>
 
-<form method="post">
+<form method="post" class="form-card">
     {% csrf_token %}
     {{ form.as_p }}
-    <button type="submit">Save Changes</button>
+    <div class="actions">
+        <button type="submit">Save Changes</button>
+        <a href="{% url 'record_income' %}">Cancel</a>
+    </div>
 </form>
-
-<a href="{% url 'record_income' %}">Cancel</a>
 {% endblock %}
