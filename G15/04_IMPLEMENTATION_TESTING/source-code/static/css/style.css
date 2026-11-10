@@ -1,766 +1,123 @@
-/* Smart Expense & Budget Management Application — application stylesheet.
-   Design tokens live in :root so colour, spacing and radius stay consistent
-   across pages that were written by different team members. */
-
-:root {
-    /* Brand */
-    --ink: #101827;
-    --ink-soft: #2a3447;
-    --accent: #138b69;
-    --accent-strong: #0f7257;
-    --accent-soft: #e6f6f0;
-    --accent-bright: #20d6a0;
-
-    /* Surfaces */
-    --page: #f4f6fb;
-    --surface: #ffffff;
-    --surface-muted: #f8fafc;
-    --line: #e2e8f0;
-    --line-strong: #cbd5e1;
-
-    /* Text */
-    --text: #172033;
-    --text-muted: #647087;
-    --text-faint: #8b95a8;
-    --text-invert: #eef2f9;
-
-    /* Status */
-    --danger: #b4232c;
-    --danger-soft: #fdecec;
-    --danger-line: #f3c2c2;
-    --warn: #96600a;
-    --warn-soft: #fdf4e3;
-    --warn-line: #f0ddb4;
-    --ok: #176b3a;
-    --ok-soft: #e8f7ee;
-    --ok-line: #b7e4c7;
-
-    /* Scale */
-    --radius-sm: 6px;
-    --radius: 10px;
-    --radius-lg: 16px;
-    --gap: 16px;
-    --shadow-sm: 0 1px 2px rgba(16, 24, 39, 0.05);
-    --shadow: 0 1px 3px rgba(16, 24, 39, 0.06), 0 8px 24px rgba(16, 24, 39, 0.05);
-    --shadow-lift: 0 2px 6px rgba(16, 24, 39, 0.08), 0 14px 32px rgba(16, 24, 39, 0.08);
-
-    /* Fraunces carries the headings, DM Sans the interface. Both load from
-       Google Fonts in base.html; the stacks fall back to system faces. */
-    --font: "DM Sans", "Segoe UI", system-ui, -apple-system, Arial, sans-serif;
-    --font-display: "Fraunces", "Iowan Old Style", Georgia, "Times New Roman", serif;
-}
 
 * {
     box-sizing: border-box;
 }
 
-/* The page is a column so the footer sits at the bottom even on short pages
-   and .container can absorb the leftover height. */
 body {
     margin: 0;
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-    font-family: var(--font);
-    font-size: 15.5px;
-    line-height: 1.65;
-    background: var(--page);
-    color: var(--text);
-    -webkit-font-smoothing: antialiased;
+    font-family: Arial, sans-serif;
+    background: #f5f7fb;
+    color: #172033;
 }
-
-/* ---------------------------------------------------------------- typography */
-
-h1, h2, h3 {
-    font-family: var(--font-display);
-    color: var(--ink);
-    line-height: 1.2;
-    letter-spacing: -0.015em;
-    margin: 0 0 12px;
-}
-
-h1 { font-size: clamp(28px, 3.6vw, 38px); font-weight: 600; }
-h2 { font-size: 21px; font-weight: 600; }
-h3 { font-size: 17px; font-weight: 600; }
-
-a {
-    color: var(--accent-strong);
-    text-decoration: none;
-    font-weight: 500;
-}
-
-a:hover {
-    text-decoration: underline;
-}
-
-code {
-    display: inline-block;
-    background: var(--surface-muted);
-    border: 1px solid var(--line);
-    border-radius: var(--radius-sm);
-    padding: 2px 8px;
-    font-size: 13px;
-    color: var(--ink-soft);
-}
-
-/* -------------------------------------------------------------------- navbar */
 
 .navbar {
-    min-height: 68px;
-    padding: 0 clamp(20px, 4vw, 56px);
-    background: var(--ink);
+    min-height: 72px;
+    padding: 0 7%;
+    background: #101827;
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 24px;
-    box-shadow: var(--shadow-sm);
 }
 
 .brand {
-    font-family: var(--font-display);
-    color: #ffffff;
+    color: white;
     text-decoration: none;
     font-size: 20px;
-    font-weight: 600;
-    letter-spacing: -0.015em;
+    font-weight: 700;
     display: flex;
     align-items: center;
     gap: 10px;
 }
 
-.brand:hover {
-    text-decoration: none;
-}
-
 .brand-icon {
-    font-family: var(--font);
-    background: var(--accent-bright);
-    color: #06201a;
-    padding: 6px 12px;
-    border-radius: var(--radius-sm);
-    font-size: 17px;
-    font-weight: 700;
+    background: #20b486;
+    color: #071a16;
+    padding: 8px 12px;
+    border-radius: 8px;
 }
 
 .navbar nav {
     display: flex;
-    flex-wrap: wrap;
-    justify-content: flex-end;
-    gap: 2px;
+    gap: 24px;
 }
 
 .navbar nav a {
-    color: #cfd7e6;
+    color: #d5dbea;
     text-decoration: none;
     font-size: 14px;
-    font-weight: 500;
-    white-space: nowrap;
-    padding: 8px 11px;
-    border-radius: var(--radius-sm);
-    transition: background 0.15s ease, color 0.15s ease;
 }
 
 .navbar nav a:hover {
-    color: #ffffff;
-    background: rgba(255, 255, 255, 0.09);
-    text-decoration: none;
+    color: #20d6a0;
 }
-
-/* ---------------------------------------------------------------- page shell */
 
 .container {
-    width: 100%;
     max-width: 1100px;
-    margin: 44px auto 64px;
+    margin: 60px auto;
     padding: 0 24px;
-    /* Takes the height the navbar and footer leave behind, so a short page
-       has no dead band above the footer. */
-    flex: 1 0 auto;
-    display: flex;
-    flex-direction: column;
-}
-
-/* The landing page is sized to the viewport, so it drops the shell margins
-   rather than overflowing into a short scroll. */
-.container:has(.hero) {
-    margin-top: 0;
-    margin-bottom: 28px;
-}
-
-/* Several pages nest their own .container inside the one in base.html. */
-.container .container {
-    padding: 0;
-    margin-top: 0;
-    margin-bottom: 0;
-    flex: 0 1 auto;
-    display: block;
-}
-
-.page-head {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    justify-content: space-between;
-    gap: var(--gap);
-    margin-bottom: 24px;
-}
-
-.page-head h1,
-.page-head h2 {
-    margin: 0;
-}
-
-.page-head .subtitle {
-    flex-basis: 100%;
-    margin: 0;
-}
-
-.footer {
-    padding: 22px 24px;
-    text-align: center;
-    color: var(--text-faint);
-    font-size: 13px;
-    background: var(--surface);
-    border-top: 1px solid var(--line);
-}
-
-/* ------------------------------------------------------- landing page (home) */
-
-/* The hero owns the whole viewport the shell gives it and centres itself in
-   it, with the highlights anchored to the bottom of that space. */
-.hero {
-    flex: 1 0 auto;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    text-align: center;
-    gap: 4px;
-    padding: 24px 0 0;
-}
-
-.hero .eyebrow {
-    margin-bottom: 14px;
-}
-
-.hero h1 {
-    font-size: clamp(42px, 7.4vw, 82px);
-    font-weight: 600;
-    line-height: 1.04;
-    letter-spacing: -0.03em;
-    margin: 0;
-}
-
-.hero-lede {
-    max-width: 30ch;
-    margin: 22px 0 0;
-    font-size: clamp(16.5px, 1.5vw, 19.5px);
-    line-height: 1.6;
-    color: var(--text-muted);
-    text-wrap: balance;
-}
-
-.hero-actions {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: center;
-    gap: 14px;
-    margin: 34px 0 0;
-}
-
-.hero-actions .button {
-    padding: 14px 28px;
-    font-size: 15px;
-}
-
-.hero-highlights {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 20px;
-    width: 100%;
-    margin-top: auto;
-    padding-top: 44px;
-    text-align: left;
-}
-
-.highlight {
-    background: var(--surface);
-    border: 1px solid var(--line);
-    border-radius: var(--radius);
-    box-shadow: var(--shadow-sm);
-    padding: 22px 24px;
-}
-
-.highlight h2 {
-    font-size: 17px;
-    margin: 0 0 6px;
-}
-
-.highlight p {
-    margin: 0;
-    color: var(--text-muted);
-    font-size: 14.5px;
-    line-height: 1.6;
-}
-
-/* --------------------------------------------------------------------- cards */
-
-.welcome-card,
-.form-card,
-.chart-card,
-.report {
-    background: var(--surface);
-    border: 1px solid var(--line);
-    border-radius: var(--radius-lg);
-    box-shadow: var(--shadow);
+    min-height: 65vh;
 }
 
 .welcome-card {
-    padding: 44px 48px;
-}
-
-.welcome-card + .welcome-card,
-.report + .report {
-    margin-top: 24px;
-}
-
-.form-card,
-.report {
-    padding: 28px 32px;
+    background: white;
+    padding: 48px;
+    border: 1px solid #e1e7ef;
+    border-radius: 16px;
 }
 
 .eyebrow {
-    color: var(--accent);
-    font-size: 11px;
+    color: #138b69;
+    font-size: 12px;
     font-weight: 700;
     letter-spacing: 2px;
-    text-transform: uppercase;
-    margin: 0 0 10px;
+}
+
+.welcome-card h1 {
+    font-size: clamp(30px, 5vw, 48px);
+    margin: 16px 0;
 }
 
 .subtitle {
-    color: var(--text-muted);
+    color: #647087;
     line-height: 1.7;
-    max-width: 640px;
+    max-width: 600px;
 }
 
-.period {
-    color: var(--text-faint);
-    font-size: 13px;
-    font-variant-numeric: tabular-nums;
-}
-
-.empty {
-    background: var(--surface);
-    border: 1px dashed var(--line-strong);
-    border-radius: var(--radius);
-    padding: 28px;
+.footer {
+    padding: 24px;
     text-align: center;
-    color: var(--text-muted);
-}
-
-/* --------------------------------------------------------------------- forms */
-
-label,
-.form-label {
-    display: block;
+    color: #738096;
     font-size: 13px;
-    font-weight: 600;
-    color: var(--ink-soft);
-    margin-bottom: 6px;
+    border-top: 1px solid #e1e7ef;
 }
 
-input[type="text"],
-input[type="email"],
-input[type="password"],
-input[type="number"],
-input[type="date"],
-input[type="file"],
-select,
-textarea,
-.form-control {
-    width: 100%;
-    max-width: 420px;
-    font-family: inherit;
-    font-size: 15px;
-    color: var(--text);
-    background: var(--surface);
-    border: 1px solid var(--line-strong);
-    border-radius: var(--radius-sm);
-    padding: 10px 12px;
-    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+@media (max-width: 600px) {
+    .navbar {
+        padding: 18px 20px;
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .navbar nav {
+        gap: 18px;
+    }
+
+    .welcome-card {
+        padding: 28px 22px;
+    }
 }
-
-textarea {
-    min-height: 90px;
-    resize: vertical;
-}
-
-input:focus,
-select:focus,
-textarea:focus {
-    outline: none;
-    border-color: var(--accent);
-    box-shadow: 0 0 0 3px rgba(19, 139, 105, 0.15);
-}
-
-:focus-visible {
-    outline: 2px solid var(--accent);
-    outline-offset: 2px;
-}
-
-/* .field / .form-group are the hand-written wrappers; form.as_p emits <p>. */
-.field,
-.form-group,
-.mb-3,
-form p {
-    margin: 0 0 18px;
-}
-
-.field-inline {
-    display: inline-flex;
-    flex-direction: column;
-    gap: 4px;
-}
-
-.field-inline label {
-    margin-bottom: 0;
-}
-
-/* .help is hand-written; .helptext is what Django's form.as_p emits. */
-.help,
-.helptext {
-    display: block;
-    color: var(--text-faint);
-    font-size: 12.5px;
-    margin: 6px 0 0;
-}
-
-.filter-bar {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: flex-end;
-    gap: var(--gap);
-    background: var(--surface);
-    border: 1px solid var(--line);
-    border-radius: var(--radius);
-    box-shadow: var(--shadow-sm);
-    padding: 18px 20px;
-    margin-bottom: 24px;
-}
-
-.filter-bar input,
-.filter-bar select {
-    max-width: 220px;
-}
-
-.actions {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: var(--gap);
-    margin-top: 24px;
-}
-
-/* ------------------------------------------------------------------- buttons */
-
-button,
-.button,
-.btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    font-family: inherit;
-    font-size: 14px;
-    font-weight: 600;
-    line-height: 1.2;
-    color: #ffffff;
-    background: var(--accent);
-    border: 1px solid var(--accent);
-    border-radius: var(--radius-sm);
-    padding: 11px 20px;
-    cursor: pointer;
-    text-decoration: none;
-    box-shadow: var(--shadow-sm);
-    transition: background 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
-}
-
-button:hover,
-.button:hover,
-.btn:hover {
-    background: var(--accent-strong);
-    border-color: var(--accent-strong);
-    box-shadow: var(--shadow-lift);
-    text-decoration: none;
-}
-
-button:active,
-.button:active {
-    box-shadow: none;
-}
-
-.button-ghost {
-    color: var(--ink);
-    background: var(--surface);
-    border-color: var(--line-strong);
-}
-
-.button-ghost:hover {
-    color: var(--ink);
-    background: var(--surface-muted);
-    border-color: var(--text-faint);
-}
-
-/* A bare link sitting next to a submit button is always the cancel path. */
-.actions a,
-form + a {
-    color: var(--ink-soft);
-    background: var(--surface);
-    border: 1px solid var(--line-strong);
-    border-radius: var(--radius-sm);
-    padding: 11px 20px;
-    font-size: 14px;
-    font-weight: 600;
-}
-
-.actions a:hover,
-form + a:hover {
-    background: var(--surface-muted);
-    text-decoration: none;
-}
-
-/* Dismiss / disable / re-enable controls inside rows and alerts stay quiet. */
-.data-table button,
-table button,
-.alert button {
-    color: var(--ink-soft);
-    background: var(--surface);
-    border-color: var(--line-strong);
-    padding: 6px 12px;
-    font-size: 13px;
-    box-shadow: none;
-}
-
-.data-table button:hover,
-table button:hover,
-.alert button:hover {
-    background: var(--surface-muted);
-    border-color: var(--text-faint);
-    box-shadow: none;
-}
-
-/* -------------------------------------------------------------------- tables */
-
-.data-table,
-table {
-    width: 100%;
-    border-collapse: separate;
-    border-spacing: 0;
-    background: var(--surface);
-    border: 1px solid var(--line);
-    border-radius: var(--radius);
-    box-shadow: var(--shadow-sm);
-    overflow: hidden;
-    font-size: 14px;
-}
-
-thead th {
-    background: var(--surface-muted);
-    color: var(--text-muted);
-    font-size: 11.5px;
-    font-weight: 700;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
-    text-align: left;
-    padding: 12px 16px;
-    border-bottom: 1px solid var(--line);
-    white-space: nowrap;
-}
-
-tbody td {
-    padding: 13px 16px;
-    border-bottom: 1px solid var(--line);
-    vertical-align: middle;
-}
-
-tbody tr:last-child td {
-    border-bottom: none;
-}
-
-tbody tr:hover td {
-    background: var(--surface-muted);
-}
-
-tfoot th {
-    background: var(--surface-muted);
-    text-align: left;
-    padding: 13px 16px;
-    font-size: 13.5px;
-    border-top: 1px solid var(--line);
-}
-
-/* Amounts and percentages line up column-wise. */
-tbody td + td,
-tfoot th + th {
-    font-variant-numeric: tabular-nums;
-}
-
-tbody td a {
-    font-size: 13.5px;
-}
-
-tbody td a + a {
-    margin-left: 12px;
-}
-
-tr.over-limit td {
-    background: var(--danger-soft);
-}
-
-tr.over-limit:hover td {
-    background: #fbe2e2;
-}
-
-tr.at-threshold td {
-    background: var(--warn-soft);
-}
-
-tr.at-threshold:hover td {
-    background: #fbeed3;
-}
-
-tr.inactive td {
-    color: var(--text-faint);
-}
-
-/* ---------------------------------------------------------------------- tags */
-
-.tag {
-    display: inline-block;
-    background: var(--accent-soft);
-    color: var(--accent-strong);
-    border: 1px solid #c2e7da;
-    border-radius: 999px;
-    padding: 2px 10px;
-    font-size: 11.5px;
-    font-weight: 700;
-    letter-spacing: 0.03em;
-    white-space: nowrap;
-}
-
-.tag-warn {
-    background: var(--warn-soft);
-    color: var(--warn);
-    border-color: var(--warn-line);
-}
-
-.tag-over {
-    background: var(--danger-soft);
-    color: var(--danger);
-    border-color: var(--danger-line);
-}
-
-.tag-muted {
-    background: var(--surface-muted);
-    color: var(--text-faint);
-    border-color: var(--line-strong);
-}
-
-/* ---------------------------------------------------- messages, alerts, errors */
-
-.success-message,
-.alert,
-.messages li {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    justify-content: space-between;
-    gap: var(--gap);
-    background: var(--ok-soft);
-    color: var(--ok);
-    border: 1px solid var(--ok-line);
-    border-left: 4px solid currentColor;
-    border-radius: var(--radius-sm);
-    padding: 13px 18px;
-    font-size: 14.5px;
-}
-
-.messages {
-    list-style: none;
-    margin: 0 0 24px;
-    padding: 0;
-    display: grid;
-    gap: 10px;
-}
-
-.alerts {
-    margin-bottom: 24px;
-}
-
-.alerts h2 {
+.success-message {
+    background: #e8f7ee;
+    color: #176b3a;
+    border: 1px solid #b7e4c7;
+    padding: 14px 18px;
+    border-radius: 8px;
+    margin-bottom: 20px;
     font-size: 15px;
 }
 
-.alert + .alert {
-    margin-top: 10px;
-}
-
-/* Budget alerts are rendered as alert-{{ kind }}: threshold, exceeded, … */
-.alert-threshold,
-.alert-warning {
-    background: var(--warn-soft);
-    color: var(--warn);
-    border-color: var(--warn-line);
-}
-
-.alert-exceeded,
-.alert-over,
-.alert-danger {
-    background: var(--danger-soft);
-    color: var(--danger);
-    border-color: var(--danger-line);
-}
-
-.alert-success {
-    background: var(--ok-soft);
-    color: var(--ok);
-    border-color: var(--ok-line);
-}
-
-.errors,
-.form-errors {
-    list-style: none;
-    background: var(--danger-soft);
-    color: var(--danger);
-    border: 1px solid var(--danger-line);
-    border-left: 4px solid currentColor;
-    border-radius: var(--radius-sm);
-    margin: 0 0 20px;
-    padding: 13px 18px;
-    font-size: 14px;
-}
-
-.errors li {
-    margin-left: 4px;
-}
-
-.error,
-.field-error,
-.errorlist {
-    color: var(--danger);
-    font-size: 13px;
-    font-weight: 500;
-    margin: 6px 0 0;
-}
-
-.errorlist {
-    list-style: none;
-    padding: 0;
-}
-
-/* ------------------------------------------------- analytics dashboard (FR-018) */
-
+/* Analytics dashboard (FR-018) */
 .chart-grid {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -769,13 +126,15 @@ tr.inactive td {
 }
 
 .chart-card {
-    padding: 20px 22px 24px;
-    border-radius: var(--radius);
+    background: #ffffff;
+    border: 1px solid #e3e6ea;
+    border-radius: 10px;
+    padding: 18px 20px 22px;
 }
 
 .chart-card h2 {
-    font-size: 15px;
-    margin: 0 0 16px;
+    font-size: 16px;
+    margin: 0 0 14px;
 }
 
 .chart-card canvas {
@@ -786,68 +145,8 @@ tr.inactive td {
     grid-column: 1 / -1;
 }
 
-/* ------------------------------------------- Bootstrap-style spacing leftovers */
-
-.mt-3 { margin-top: 16px; }
-.mt-4 { margin-top: 24px; }
-
-/* --------------------------------------------------------------- small screens */
-
 @media (max-width: 760px) {
-    .chart-grid,
-    .hero-highlights {
+    .chart-grid {
         grid-template-columns: minmax(0, 1fr);
-    }
-
-    .hero {
-        justify-content: flex-start;
-        padding-top: 16px;
-    }
-
-    .hero-highlights {
-        padding-top: 40px;
-    }
-
-    .container {
-        margin: 28px auto 48px;
-    }
-
-    .welcome-card {
-        padding: 28px 22px;
-    }
-
-    .form-card,
-    .report {
-        padding: 22px 20px;
-    }
-
-    .data-table,
-    table {
-        display: block;
-        overflow-x: auto;
-    }
-}
-
-@media (max-width: 600px) {
-    .navbar {
-        padding: 16px 20px;
-        align-items: flex-start;
-        flex-direction: column;
-        gap: 12px;
-    }
-
-    .navbar nav {
-        margin-left: -12px;
-    }
-
-    .actions,
-    .filter-bar {
-        gap: 12px;
-    }
-
-    .actions button,
-    .actions a {
-        flex: 1 1 auto;
-        text-align: center;
     }
 }
