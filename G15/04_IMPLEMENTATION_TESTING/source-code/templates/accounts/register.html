@@ -5,7 +5,7 @@
     <h1>Create your account</h1>
     <p>Register to start managing your expenses and budgets.</p>
 
-    <form method="post">
+    <form method="post" class="form-card">
         {% csrf_token %}
         {{ form.as_p }}
         <button type="submit">Register</button>
