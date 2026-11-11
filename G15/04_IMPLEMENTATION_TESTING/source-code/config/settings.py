@@ -33,6 +33,17 @@ ALLOWED_HOSTS = os.environ.get(
     "localhost,127.0.0.1",
 ).split(",")
 
+# NFR-002: the platform health check requests arrive with the service's own
+# public hostname as their Host header. When ALLOWED_HOSTS does not cover it,
+# Django answers every check with DisallowedHost (400), the service never
+# reports healthy and the deploy is rolled back. Render publishes that
+# hostname to the running container, so read it from there rather than
+# relying on the blueprint to resolve it.
+RENDER_EXTERNAL_HOSTNAME = os.environ.get("RENDER_EXTERNAL_HOSTNAME")
+
+if RENDER_EXTERNAL_HOSTNAME and RENDER_EXTERNAL_HOSTNAME not in ALLOWED_HOSTS:
+    ALLOWED_HOSTS.append(RENDER_EXTERNAL_HOSTNAME)
+
 
 # --------------------------------------------------
 # APPLICATION DEFINITION
