@@ -24,7 +24,13 @@ services:
     region: singapore
     rootDir: G15/04_IMPLEMENTATION_TESTING/source-code
     buildCommand: "pip install -r requirements.txt && ./build.sh"
-    startCommand: "gunicorn config.wsgi:application"
+    # NFR-001: the default is a single sync worker, which serves exactly one
+    # request at a time. TC-PERF-01 at 50 users produced 591 502s (5.38%,
+    # against a 1% budget) purely from requests queueing behind it, while the
+    # measured endpoints themselves answered in 360-440 ms at the 95th
+    # percentile. One process keeps inside the 512 MB the free plan allows;
+    # the threads let the database waits overlap instead of blocking.
+    startCommand: "gunicorn config.wsgi:application --worker-class gthread --workers 1 --threads 8 --timeout 60"
     # NFR-002: Render restarts the service when this stops returning 200.
     healthCheckPath: /healthz/
     envVars:
