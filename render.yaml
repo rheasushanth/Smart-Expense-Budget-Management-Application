@@ -12,6 +12,9 @@ databases:
     databaseName: smart_expense
     user: smart_expense
     plan: free
+    # Must match the web service's region: Render's internal database
+    # hostname only resolves within a region, and the default is Oregon.
+    region: singapore
 
 services:
   - type: web
@@ -37,8 +40,13 @@ services:
       - key: DJANGO_DEBUG
         value: "False"
 
-      # Resolved to this service's own hostname, so ALLOWED_HOSTS cannot drift
-      # from the URL the application is actually served on.
+      # This resolves to the service's INTERNAL hostname ("smart-expense-pz56"),
+      # not the public one the application is served on. Requests arrive with
+      # Host: <service>.onrender.com, so this value alone makes Django reject
+      # every one of them with DisallowedHost, health checks included.
+      # settings.py appends RENDER_EXTERNAL_HOSTNAME for the public name; this
+      # entry remains because the internal name is what service-to-service
+      # calls inside the private network use.
       - key: DJANGO_ALLOWED_HOSTS
         fromService:
           type: web
