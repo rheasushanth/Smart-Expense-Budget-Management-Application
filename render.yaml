@@ -12,6 +12,9 @@ databases:
     databaseName: smart_expense
     user: smart_expense
     plan: free
+    # Must match the web service's region: Render's internal database
+    # hostname only resolves within a region, and the default is Oregon.
+    region: singapore
 
 services:
   - type: web
