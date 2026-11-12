@@ -1,11 +1,11 @@
-﻿# Test Case Document v1.2
+# Test Case Document v1.2
 
 **Project:** Smart Expense & Budget Management Application
 **Group:** G-15
 **Issued:** 5 November 2026
-**Updated:** 11 November 2026 (deployment evidence and status review)
+**Updated:** 12 November 2026 (deployment evidence and status review)
 **Supersedes:** Validation Spec v1.1 Sections 13.1 and 13.2 (`03_DESIGN/G15_ValidationSpec_v2.pdf`, 13 October 2026)
-**Status at issue:** commit `1429bc4` on `main` â€” 195 tests, 0 failures
+**Status at issue:** commit `1429bc4` on `main` — 195 tests, 0 failures
 
 This is the current Test Case Document. It reissues all 37 cases with
 the expected results that the delivered system actually meets, rather
@@ -20,8 +20,8 @@ reason given.
   Status            Cases
   -------------- --------
   Pass                 33
-  Partial               3
-  Not executed          1
+  Partial               4
+  Not executed          0
   **Total**        **37**
 
 ------------------------------------------------------------------------
@@ -84,7 +84,7 @@ note. **Expected.** Saved with type Income and source Manual.
 
 ### TC-TXN-03 --- FR-007 --- Negative, positive --- **Pass**
 
-**Steps.** Submit with no category; then amount 0; then amount âˆ’5; then
+**Steps.** Submit with no category; then amount 0; then amount −5; then
 an Income transaction with category Food (an Expense category).
 **Expected.** Each is rejected with an inline error and nothing is
 saved. A submission with one active category of the matching type saves.
@@ -255,31 +255,23 @@ data. The Customer request returns 403. **Evidence.**
 
 ## 6. Non-functional requirements
 
-### TC-PERF-01 --- NFR-001 --- Performance --- **Not executed** --- **\[Changed v1.2\]**
+### TC-PERF-01 — NFR-001 — Performance — **Partial** — **[Changed v1.2]**
 
-**Steps.** Seed 10 000 transactions. **On a PostgreSQL environment**,
-run Locust with 50 concurrent users for 10 minutes, each alternating
-dashboard, category report and budget page requests. **Expected.** 95th
-percentile response time is 2.0 seconds or less and the error rate is
-below 1%. **Changed because.** v1.1 left the environment to the Section
-6 risk register. It is not optional: with
-`SESSION_SAVE_EVERY_REQUEST = True` (required by SEC-004) every request
-writes a session row, SQLite takes a database-wide write lock, and at 50
-users those writes fail with `database is locked`, returning HTTP 400.
-The case cannot pass on SQLite for reasons unrelated to the code under
-test, so PostgreSQL is now stated as a precondition. **Why not executed.** The application is now deployed on Render with
-PostgreSQL, but the required Locust test with 50 concurrent users for 10
-minutes has not yet been executed in that environment. The SQLite test
-results below are preliminary evidence only and do not satisfy this
-test. **Partial evidence.** Harness delivered
-(`performance/locustfile.py`, `seed_perf_data`). At 10 users on SQLite:
-worst endpoint 95th percentile 490 ms against a 2000 ms budget, 369
-requests, 0 failures. This is not a pass.
+**Steps.** Seed 10,000 transactions. On the Render PostgreSQL deployment, run Locust with 50 concurrent users for 10 minutes, alternating dashboard, category report and budget page requests.
 
+**Expected.** The 95th percentile response time is 2.0 seconds or less and the error rate is below 1%.
 
-### TC-AVAIL-01 â€” NFR-002 â€” Operational review â€” **Partial** â€” **[Changed v1.2]**
+**Executed.** The test was run three times against the Render PostgreSQL deployment. All six measured endpoints met the 2,000 ms p95 budget, recording 270–600 ms across the runs. The overall error rate was 4.47%–5.41%, above the required below-1% threshold. The harness therefore exited non-zero, and the overall test did not pass.
 
-**Steps.** Poll the deployed health URL every 5 minutes for 7 days during 06:00â€“24:00 IST, excluding announced maintenance.
+All failures were HTTP 502 responses concentrated during the opening login phase. The cumulative failure count then remained unchanged for the rest of each run. PBKDF2 login hashing saturated the Render free instance's 0.1 CPU allocation. This is an instance-capacity limitation, not a reporting-endpoint failure. Threaded workers (gthread, 8 threads) improved p95 and reduced failures in run 2; slowing the ramp did not resolve the error rate.
+
+**Result.** Response-time criterion met; error-rate criterion not met. Overall TC-PERF-01: Partial. See `performance/TC-PERF-01-results.md` and deviation D-04 in `G15/DEVIATIONS.md`.
+
+**Evidence.** `performance/TC-PERF-01-results.md`; D-04 in `G15/DEVIATIONS.md`.
+
+### TC-AVAIL-01 — NFR-002 — Operational review — **Partial** — **[Changed v1.2]**
+
+**Steps.** Poll the deployed health URL every 5 minutes for 7 days during 06:00–24:00 IST, excluding announced maintenance.
 
 **Expected.** At least 99% of polls return HTTP 200. Downtime causes are logged.
 
@@ -466,35 +458,15 @@ owner-scoping assertions across the app test modules.
 
 ## 8. Summary of changes from v1.1
 
-  -----------------------------------------------------------------------
-  Case                                Change
-  ----------------------------------- -----------------------------------
-  TC-RPT-02                           Chart-data endpoint and its 400/422
-                                      error statuses added
-
-  TC-PERF-01                          PostgreSQL stated as a
-                                      precondition, with the reason
-
-  TC-REL-01                           Expected result corrected:
-                                      interrupted imports retain written
-                                      rows (D-05)
-
-  TC-SEC-03                           Formula step reclassified as
-                                      documenting storage; `<script>`
-                                      escaping noted as untested
-
-  TC-SEC-06                           HTTP 429 corrected to a 200
-                                      response; lockout non-disclosure to
-                                      a wrong password added
-
-  TC-AVAIL-01                        Deployed health endpoint manually
-                                      verified; seven-day monitoring
-                                      remains incomplete
-
-  TC-POL-01                           Deployment, test-data and public
-                                      registration evidence recorded;
-                                      team-only access remains unmet
-  -----------------------------------------------------------------------
+| Case | Change |
+|---|---|
+| TC-RPT-02 | Chart-data endpoint and its 400/422 error statuses added |
+| TC-PERF-01 | Three Render PostgreSQL performance runs recorded. Response-time criterion met; error-rate criterion not met (D-04). |
+| TC-REL-01 | Expected result corrected: interrupted imports retain written rows (D-05) |
+| TC-SEC-03 | Formula step reclassified as documenting storage; `<script>` escaping noted as untested |
+| TC-SEC-06 | HTTP 429 corrected to a 200 response; lockout non-disclosure to a wrong password added |
+| TC-AVAIL-01 | Deployed health endpoint manually verified; seven-day monitoring remains incomplete |
+| TC-POL-01 | Deployment, test-data and public registration evidence recorded; team-only access remains unmet |
 
 No case has been removed, and the traceability matrix in Validation Spec
 v1.1 Section 15 remains valid.
