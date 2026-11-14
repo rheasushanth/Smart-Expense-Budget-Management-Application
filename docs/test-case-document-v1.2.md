@@ -3,7 +3,7 @@
 **Project:** Smart Expense & Budget Management Application
 **Group:** G-15
 **Issued:** 5 November 2026
-**Updated:** 12 November 2026 (deployment evidence and status review)
+**Updated:** 14 November 2026 (deployment evidence, performance results and D-08 access review)
 **Supersedes:** Validation Spec v1.1 Sections 13.1 and 13.2 (`03_DESIGN/G15_ValidationSpec_v2.pdf`, 13 October 2026)
 **Status at issue:** commit `1429bc4` on `main` — 195 tests, 0 failures
 
@@ -326,26 +326,22 @@ run the budget calculation and alert evaluation test modules.
 service. **Evidence.** `budgets/tests.py`; the sandbox is behind an
 interface with a mock.
 
-### TC-POL-01 --- NFR-007 --- Compliance review --- **Partial** --- **[Changed v1.2]**
 
-**Steps.** Review the deployment against a four-point checklist: hosted
-on campus-approved infrastructure, no real personal financial data, test
-data only, access limited to the team and evaluators.
+### TC-POL-01 — NFR-007 — Compliance review — **Partial** — **[Changed v1.2]**
 
-**Expected.** All four checklist items are confirmed and the reviewer
-signs the checklist.
+**Steps.** Review the deployment against a four-point checklist: hosted on campus-approved infrastructure, no real personal financial data, test data only, access limited to the team and evaluators.
+
+**Expected.** All four checklist items are confirmed and the reviewer signs the checklist.
 
 **Executed in part.**
 
-1.  **Hosting:** Application deployed on Render. Hosting platform
-    approved by the faculty/project guide.
-2.  **Personal financial data:** No real personal financial data is
-    used.
-3.  **Test data:** Only dummy/test user and financial data is used. Bank
-    integration uses a sandbox/mock adapter.
-4.  **Access control:** The application is publicly accessible and
-    allows user registration. Financial pages require authentication,
-    but access is not restricted to team members and evaluators.
+1. **Hosting:** Application deployed on Render. Hosting platform approved by the faculty/project guide.
+
+2. **Personal financial data:** No real personal financial data is used.
+
+3. **Test data:** Only dummy/test user and financial data is used. Bank integration uses a sandbox/mock adapter.
+
+4. **Access control:** The application is publicly accessible and registration is open. Financial pages require authentication, but access is not restricted to team members and evaluators. The deployment URL is unlisted, which limits discovery but does not restrict access. It is not an access-control mechanism or a substitute for one.
 
 **Evidence.**
 
@@ -353,14 +349,11 @@ signs the checklist.
 - Health check: `GET /healthz/` returned HTTP 200 with `{"status": "ok", "database": "ok"}`.
 - Homepage: `GET /` returned HTTP 200.
 - Unauthenticated request to `/transactions/expense/` redirected to the login page.
+- Public deployment and open registration documented in deviation **D-08** in `G15/DEVIATIONS.md`.
 
-**Changed because.** The application is now deployed and the hosting,
-data-handling and test-data checks have been reviewed against the current
-deployment. The access-control review also established that public
-registration is enabled, so the team-only condition cannot be confirmed.
-**Result.** Three checklist items are confirmed. The team-only access
-condition remains unmet because public registration is enabled. Reviewer
-sign-off is pending.
+**Changed because.** The application is deployed and the hosting, data-handling and test-data checks have been reviewed against the current deployment. The access-control review established that public registration is enabled. Rather than restricting access and preventing evaluators from opening the deployment URL directly, this arrangement is documented under D-08. The unlisted URL is explicitly not treated as access control.
+
+**Result.** Three checklist items are confirmed. Item 4 remains unmet pending project guide confirmation on whether public access is acceptable. Reviewer sign-off is pending. Overall TC-POL-01 status remains **Partial**. If the guide accepts public access, item 4 may be marked Pass and D-08 closed.
 
 ------------------------------------------------------------------------
 
@@ -466,7 +459,7 @@ owner-scoping assertions across the app test modules.
 | TC-SEC-03 | Formula step reclassified as documenting storage; `<script>` escaping noted as untested |
 | TC-SEC-06 | HTTP 429 corrected to a 200 response; lockout non-disclosure to a wrong password added |
 | TC-AVAIL-01 | Deployed health endpoint manually verified; seven-day monitoring remains incomplete |
-| TC-POL-01 | Deployment, test-data and public registration evidence recorded; team-only access remains unmet |
+| TC-POL-01 | Deployment, test-data and public-access evidence recorded; D-08 documents the public registration arrangement pending guide confirmation |
 
 No case has been removed, and the traceability matrix in Validation Spec
 v1.1 Section 15 remains valid.
