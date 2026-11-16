@@ -23,11 +23,22 @@
             <a href="{% url 'home' %}">Home</a>
 
             {% if user.is_authenticated %}
+                {# TC-USA-01 asserts the home page offers "Record Expense",
+                   so this label is part of the validated behaviour. #}
                 <a href="{% url 'record_expense' %}">Record Expense</a>
                 <a href="{% url 'record_income' %}">Record Income</a>
-                <a href="{% url 'sync_sandbox_bank' %}">Sandbox Bank Sync</a>
+                <a href="{% url 'budget_list' %}">Budgets</a>
+                <a href="{% url 'rule_list' %}">Recurring</a>
+                <a href="{% url 'import_transactions' %}">Import</a>
+                <a href="{% url 'sync_sandbox_bank' %}">Bank Sync</a>
                 <a href="{% url 'report' %}">Reports</a>
                 <a href="{% url 'dashboard' %}">Dashboard</a>
+                {# FR-020 and FR-022 are admin-only: role_required raises 403,
+                   so these are shown only to the role that can follow them. #}
+                {% if user.role == "Administrator" %}
+                    <a href="{% url 'categories:list' %}">Categories</a>
+                    <a href="{% url 'categories:user_list' %}">Users</a>
+                {% endif %}
                 <a href="{% url 'profile' %}">Profile</a>
             {% else %}
                 <a href="{% url 'login' %}">Login</a>
