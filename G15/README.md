@@ -33,6 +33,8 @@ G15/
 ├── 05_FINAL_REPORT/
 │   └── screenshots/
 ├── 06_PRESENTATION/
+├── DEMO_VIDEOS/
+│   └── Sprint1_Demo.mp4
 └── README.md
 ```
 
