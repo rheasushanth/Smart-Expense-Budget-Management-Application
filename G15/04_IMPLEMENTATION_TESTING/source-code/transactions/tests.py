@@ -1023,3 +1023,103 @@ class SandboxBankSyncTests(TestCase):
                 user=self.user,
             ).exists()
         )
+
+
+class TransactionListTests(TestCase):
+    """FR-008's entry point: the list the edit and delete views lacked."""
+
+    def setUp(self):
+        User = get_user_model()
+        self.user = User.objects.create_user(
+            email="listuser@example.com",
+            password="TestPassword123!",
+            name="List User",
+        )
+        self.other_user = User.objects.create_user(
+            email="otherlist@example.com",
+            password="TestPassword123!",
+            name="Other List User",
+        )
+        self.category = Category.objects.create(
+            name="Fuel",
+            type=Category.CategoryType.EXPENSE,
+            is_active=True,
+            created_by=self.user,
+        )
+        self.manual = Transaction.objects.create(
+            user=self.user,
+            type=Transaction.TransactionType.EXPENSE,
+            source=Transaction.Source.MANUAL,
+            amount=Decimal("120.00"),
+            category=self.category,
+            date=date.today(),
+            note="Manual row",
+        )
+        self.imported = Transaction.objects.create(
+            user=self.user,
+            type=Transaction.TransactionType.EXPENSE,
+            source=Transaction.Source.SANDBOX,
+            amount=Decimal("340.00"),
+            category=self.category,
+            date=date.today(),
+            note="Sandbox row",
+        )
+        self.foreign = Transaction.objects.create(
+            user=self.other_user,
+            type=Transaction.TransactionType.EXPENSE,
+            source=Transaction.Source.MANUAL,
+            amount=Decimal("999.00"),
+            category=self.category,
+            date=date.today(),
+            note="Someone else's row",
+        )
+        self.client.login(
+            email="listuser@example.com",
+            password="TestPassword123!",
+        )
+
+    def test_list_requires_authentication(self):
+        self.client.logout()
+        response = self.client.get(reverse("transaction_list"))
+        self.assertNotEqual(response.status_code, 200)
+
+    def test_list_shows_only_the_signed_in_users_transactions(self):
+        response = self.client.get(reverse("transaction_list"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Manual row")
+        self.assertContains(response, "Sandbox row")
+        self.assertNotContains(response, "Someone else's row")
+
+    def test_edit_and_delete_offered_only_for_manual_rows(self):
+        # edit_transaction and delete_transaction both filter on
+        # source="Manual", so a link on an imported row would be a 404.
+        response = self.client.get(reverse("transaction_list"))
+        self.assertContains(
+            response,
+            reverse("edit_transaction", args=[self.manual.txn_id]),
+        )
+        self.assertContains(
+            response,
+            reverse("delete_transaction", args=[self.manual.txn_id]),
+        )
+        self.assertNotContains(
+            response,
+            reverse("edit_transaction", args=[self.imported.txn_id]),
+        )
+        self.assertNotContains(
+            response,
+            reverse("delete_transaction", args=[self.imported.txn_id]),
+        )
+
+    def test_delete_link_from_the_list_removes_the_transaction(self):
+        self.client.post(
+            reverse("delete_transaction", args=[self.manual.txn_id])
+        )
+        self.assertFalse(
+            Transaction.objects.filter(txn_id=self.manual.txn_id).exists()
+        )
+
+    def test_empty_state_when_the_user_has_no_transactions(self):
+        Transaction.objects.filter(user=self.user).delete()
+        response = self.client.get(reverse("transaction_list"))
+        self.assertContains(response, "No transactions yet")

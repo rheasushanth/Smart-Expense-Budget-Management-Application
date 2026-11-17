@@ -710,7 +710,9 @@ tr.inactive td {
     margin-top: 10px;
 }
 
-/* Budget alerts are rendered as alert-{{ kind }}: threshold, exceeded, … */
+/* Budget alerts render as alert-{{ alert.kind|lower }}, and Alert.Kind is
+   Threshold or Limit (budgets/models.py) — so .alert-limit is the one that
+   means the budget has been exceeded, not .alert-exceeded. */
 .alert-threshold,
 .alert-warning {
     background: var(--warn-soft);
@@ -718,6 +720,7 @@ tr.inactive td {
     border-color: var(--warn-line);
 }
 
+.alert-limit,
 .alert-exceeded,
 .alert-over,
 .alert-danger {

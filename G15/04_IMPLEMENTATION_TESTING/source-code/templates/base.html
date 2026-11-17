@@ -23,6 +23,7 @@
             <a href="{% url 'home' %}">Home</a>
 
             {% if user.is_authenticated %}
+                <a href="{% url 'transaction_list' %}">Transactions</a>
                 {% comment %}
                 TC-USA-01 asserts the home page offers "Record Expense", so
                 this label is part of the validated behaviour, not styling.

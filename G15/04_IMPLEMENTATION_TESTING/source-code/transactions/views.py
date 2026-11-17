@@ -8,6 +8,34 @@ from .models import Transaction
 from .sandbox_sync import sync_sandbox_transactions
 
 @login_required
+def transaction_list(request):
+    """List the signed-in user's transactions (FR-008).
+
+    FR-008's edit and delete views existed with nothing linking to them, so
+    the only way to reach either was to type a transaction id into the URL.
+    This is that missing entry point.
+
+    Both views restrict themselves to `source="Manual"`, so rows that arrived
+    from CSV, the sandbox bank or a recurring rule are listed without those
+    actions rather than offered links that would answer 404.
+    """
+    transactions = (
+        Transaction.objects.filter(user=request.user)
+        .select_related("category")
+        .order_by("-date", "-txn_id")
+    )
+
+    return render(
+        request,
+        "transactions/transaction_list.html",
+        {
+            "transactions": transactions,
+            "editable_source": Transaction.Source.MANUAL,
+        },
+    )
+
+
+@login_required
 def record_income(request):
     if request.method == "POST":
         form = IncomeForm(request.POST)

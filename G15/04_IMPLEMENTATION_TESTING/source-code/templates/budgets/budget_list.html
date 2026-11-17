@@ -8,12 +8,6 @@
     <a class="button" href="{% url 'budget_create' %}">New budget</a>
 </section>
 
-{% if messages %}
-<ul class="messages">
-    {% for message in messages %}<li>{{ message }}</li>{% endfor %}
-</ul>
-{% endif %}
-
 {% if alerts %}
 <section class="alerts" aria-label="Budget alerts">
     <h2>Alerts</h2>

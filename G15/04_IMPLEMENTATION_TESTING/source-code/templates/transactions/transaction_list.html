@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+
+{% block title %}Transactions{% endblock %}
+
+{% block content %}
+<section class="page-head">
+    <h1>Transactions</h1>
+    <a class="button" href="{% url 'record_expense' %}">Record Expense</a>
+</section>
+
+{% if transactions %}
+<table class="data-table">
+    <thead>
+        <tr>
+            <th>Date</th>
+            <th>Type</th>
+            <th>Category</th>
+            <th>Amount</th>
+            <th>Source</th>
+            <th>Note</th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for transaction in transactions %}
+        <tr>
+            <td>{{ transaction.date }}</td>
+            <td>{{ transaction.type }}</td>
+            <td>{{ transaction.category.name }}</td>
+            <td>{{ transaction.amount }}</td>
+            <td>
+                {% if transaction.source == editable_source %}
+                    <span class="tag tag-muted">{{ transaction.source }}</span>
+                {% else %}
+                    <span class="tag">{{ transaction.source }}</span>
+                {% endif %}
+            </td>
+            <td>{{ transaction.note|default:"" }}</td>
+            <td>
+                {% comment %}
+                edit_transaction and delete_transaction both filter on
+                source="Manual", so offering these on an imported or
+                generated row would link to a 404.
+                {% endcomment %}
+                {% if transaction.source == editable_source %}
+                    <a href="{% url 'edit_transaction' transaction.txn_id %}">Edit</a>
+                    <a href="{% url 'delete_transaction' transaction.txn_id %}">Delete</a>
+                {% endif %}
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<p class="empty">No transactions yet. Record an expense or income to get started.</p>
+{% endif %}
+{% endblock %}
