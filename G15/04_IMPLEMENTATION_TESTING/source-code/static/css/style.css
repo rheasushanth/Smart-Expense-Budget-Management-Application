@@ -126,6 +126,10 @@ code {
     display: flex;
     align-items: center;
     gap: 10px;
+    /* The nav is the wide, wrappable half of the bar. Without this the
+       brand is squeezed and "Smart Expense" breaks over two lines. */
+    flex-shrink: 0;
+    white-space: nowrap;
 }
 
 .brand:hover {
