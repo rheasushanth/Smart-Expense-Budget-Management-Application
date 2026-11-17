@@ -31,8 +31,11 @@ G15/
 │   ├── CI-CD-evidence/
 │   └── security-validation/
 ├── 05_FINAL_REPORT/
+│   ├── G15_FinalReport.md
+│   ├── G15_MaintenancePlan.md
 │   └── screenshots/
 ├── 06_PRESENTATION/
+│   └── G15_FinalPresentation.pptx
 ├── DEMO_VIDEOS/
 │   └── README.md
 └── README.md
@@ -50,8 +53,8 @@ G15/
 | 3. Design | `03_DESIGN/G15_SWDesign.pdf` | Software Design: sequence diagrams, API design, error handling, UX, key classes, deployment and data view | Final |
 | 3. Design | `03_DESIGN/G15_ValidationSpec_v2.pdf` | Test Plan v1.1 (IEEE 829): 37 traceable test cases | Final |
 | 4. Implementation & testing | `04_IMPLEMENTATION_TESTING/` | Source code, test cases, unit test and coverage reports, CI/CD evidence, security validation, ValidationSpec_v3 | To be added |
-| 5. Final report | `05_FINAL_REPORT/` | Final report, validation report, maintenance plan, screenshots | To be added |
-| 6. Presentation | `06_PRESENTATION/` | Final presentation | To be added |
+| 5. Final report | `05_FINAL_REPORT/` | Final report and maintenance plan. Validation report lives in `docs/test-reports/system-validation-report.md`. Screenshots outstanding | Partly added |
+| 6. Presentation | `06_PRESENTATION/` | Final presentation | Added |
 
 ## How the documents relate
 
