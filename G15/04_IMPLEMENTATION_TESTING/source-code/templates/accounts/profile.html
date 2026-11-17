@@ -6,12 +6,6 @@
     <h1>My Profile</h1>
     <p>View and update your account details.</p>
 
-    {% if messages %}
-        {% for message in messages %}
-            <p>{{ message }}</p>
-        {% endfor %}
-    {% endif %}
-
     <form method="post" class="form-card">
         {% csrf_token %}
         {{ form.as_p }}

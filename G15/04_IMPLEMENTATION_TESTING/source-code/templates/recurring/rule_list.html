@@ -8,12 +8,6 @@
     <a class="button" href="{% url 'rule_create' %}">New rule</a>
 </section>
 
-{% if messages %}
-<ul class="messages">
-    {% for message in messages %}<li>{{ message }}</li>{% endfor %}
-</ul>
-{% endif %}
-
 {% if rules %}
 <table class="data-table">
     <thead>

@@ -8,12 +8,6 @@
     <a class="button" href="{% url 'record_expense' %}">Record Expense</a>
 </section>
 
-{% if messages %}
-<ul class="messages">
-    {% for message in messages %}<li>{{ message }}</li>{% endfor %}
-</ul>
-{% endif %}
-
 {% if transactions %}
 <table class="data-table">
     <thead>
